@@ -41,6 +41,7 @@
 #define mkdir(path) _mkdir(path)
 #else
 #include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 
