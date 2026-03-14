@@ -661,4 +661,4 @@ public:
 
 #endif
 
-#endif /* FOSSIL_CRABDB_FRAMEWORK_H */
+#endif /* FOSSIL_DB_FRAMEWORK_H */
