@@ -49,12 +49,12 @@ extern "C" {
  * @param max_entries   Optional maximum number of cache entries (0 = unlimited).
  * @return              true on success, false on failure.
  */
-bool fossil_bluecrab_cacheshell_init(size_t max_entries);
+bool fossil_db_cacheshell_init(size_t max_entries);
 
 /**
  * @brief Shuts down the cache subsystem and releases all resources.
  */
-void fossil_bluecrab_cacheshell_shutdown(void);
+void fossil_db_cacheshell_shutdown(void);
 
 // ===========================================================
 // Basic Key/Value Operations
@@ -67,7 +67,7 @@ void fossil_bluecrab_cacheshell_shutdown(void);
  * @param value     Value string to store.
  * @return          true on success, false on failure.
  */
-bool fossil_bluecrab_cacheshell_set(const char *key, const char *value);
+bool fossil_db_cacheshell_set(const char *key, const char *value);
 
 /**
  * @brief Retrieves a value from the cache.
@@ -77,7 +77,7 @@ bool fossil_bluecrab_cacheshell_set(const char *key, const char *value);
  * @param buffer_size   Size of output buffer.
  * @return              Pointer to the retrieved value, or NULL if not found.
  */
-char *fossil_bluecrab_cacheshell_get(const char *key, size_t buffer_size);
+char *fossil_db_cacheshell_get(const char *key, size_t buffer_size);
 
 /**
  * @brief Removes a key/value pair from the cache.
@@ -85,7 +85,7 @@ char *fossil_bluecrab_cacheshell_get(const char *key, size_t buffer_size);
  * @param key   Null-terminated key string.
  * @return      true if removed, false if key not found.
  */
-bool fossil_bluecrab_cacheshell_remove(const char *key);
+bool fossil_db_cacheshell_remove(const char *key);
 
 /**
  * @brief Checks if a key exists in the cache.
@@ -93,7 +93,7 @@ bool fossil_bluecrab_cacheshell_remove(const char *key);
  * @param key   Key string.
  * @return      true if key exists, false otherwise.
  */
-bool fossil_bluecrab_cacheshell_exists(const char *key);
+bool fossil_db_cacheshell_exists(const char *key);
 
 // ===========================================================
 // Expiration / TTL (Time-to-Live)
@@ -107,7 +107,7 @@ bool fossil_bluecrab_cacheshell_exists(const char *key);
  * @param ttl_sec   Time-to-live in seconds.
  * @return          true on success, false on failure.
  */
-bool fossil_bluecrab_cacheshell_set_with_ttl(const char *key, const char *value, unsigned int ttl_sec);
+bool fossil_db_cacheshell_set_with_ttl(const char *key, const char *value, unsigned int ttl_sec);
 
 /**
  * @brief Updates the TTL of an existing key.
@@ -116,7 +116,7 @@ bool fossil_bluecrab_cacheshell_set_with_ttl(const char *key, const char *value,
  * @param ttl_sec   New TTL in seconds.
  * @return          true if updated, false if key not found.
  */
-bool fossil_bluecrab_cacheshell_expire(const char *key, unsigned int ttl_sec);
+bool fossil_db_cacheshell_expire(const char *key, unsigned int ttl_sec);
 
 /**
  * @brief Gets the remaining TTL of a key.
@@ -124,7 +124,7 @@ bool fossil_bluecrab_cacheshell_expire(const char *key, unsigned int ttl_sec);
  * @param key       Key string.
  * @return          Remaining TTL in seconds, or -1 if not found or no TTL set.
  */
-int fossil_bluecrab_cacheshell_ttl(const char *key);
+int fossil_db_cacheshell_ttl(const char *key);
 
 /**
  * @brief Refreshes the TTL of a key without changing the value.
@@ -132,14 +132,14 @@ int fossil_bluecrab_cacheshell_ttl(const char *key);
  * @param key   Key string.
  * @return      true if key found and refreshed, false otherwise.
  */
-bool fossil_bluecrab_cacheshell_touch(const char *key);
+bool fossil_db_cacheshell_touch(const char *key);
 
 /**
  * @brief Manually evicts all expired keys.
  *
  * @return      Number of keys evicted.
  */
-size_t fossil_bluecrab_cacheshell_evict_expired(void);
+size_t fossil_db_cacheshell_evict_expired(void);
 
 // ===========================================================
 // Binary-Safe Operations
@@ -153,7 +153,7 @@ size_t fossil_bluecrab_cacheshell_evict_expired(void);
  * @param size      Size of data buffer.
  * @return          true on success, false on failure.
  */
-bool fossil_bluecrab_cacheshell_set_binary(const char *key, const void *data, size_t size);
+bool fossil_db_cacheshell_set_binary(const char *key, const void *data, size_t size);
 
 /**
  * @brief Retrieves a binary-safe value.
@@ -166,7 +166,7 @@ bool fossil_bluecrab_cacheshell_set_binary(const char *key, const void *data, si
  * @param out_size  (Optional) Receives size of the binary value in bytes.
  * @return          Pointer to binary data, or NULL if not found.
  */
-const void *fossil_bluecrab_cacheshell_get_binary(const char *key, size_t *out_size);
+const void *fossil_db_cacheshell_get_binary(const char *key, size_t *out_size);
 
 // ===========================================================
 // Cache Management
@@ -175,21 +175,21 @@ const void *fossil_bluecrab_cacheshell_get_binary(const char *key, size_t *out_s
 /**
  * @brief Clears all keys/values from the cache.
  */
-void fossil_bluecrab_cacheshell_clear(void);
+void fossil_db_cacheshell_clear(void);
 
 /**
  * @brief Returns the number of keys currently in the cache.
  *
  * @return  Key count.
  */
-size_t fossil_bluecrab_cacheshell_count(void);
+size_t fossil_db_cacheshell_count(void);
 
 /**
  * @brief Retrieves approximate memory usage by the cache.
  *
  * @return  Number of bytes used by stored entries.
  */
-size_t fossil_bluecrab_cacheshell_memory_usage(void);
+size_t fossil_db_cacheshell_memory_usage(void);
 
 // ===========================================================
 // Introspection / Statistics
@@ -201,7 +201,7 @@ size_t fossil_bluecrab_cacheshell_memory_usage(void);
  * @param out_hits    Pointer to store hit count (nullable).
  * @param out_misses  Pointer to store miss count (nullable).
  */
-void fossil_bluecrab_cacheshell_stats(size_t *out_hits, size_t *out_misses);
+void fossil_db_cacheshell_stats(size_t *out_hits, size_t *out_misses);
 
 // ===========================================================
 // Iteration
@@ -210,7 +210,7 @@ void fossil_bluecrab_cacheshell_stats(size_t *out_hits, size_t *out_misses);
 /**
  * @brief Callback type for cache iteration.
  */
-typedef void (*fossil_bluecrab_cache_iter_cb)(
+typedef void (*fossil_db_cache_iter_cb)(
     const char *key,
     const void *value,
     size_t value_size,
@@ -223,7 +223,7 @@ typedef void (*fossil_bluecrab_cache_iter_cb)(
  * @param cb         Callback invoked per entry.
  * @param user_data  Optional pointer passed to callback.
  */
-void fossil_bluecrab_cacheshell_iterate(fossil_bluecrab_cache_iter_cb cb, void *user_data);
+void fossil_db_cacheshell_iterate(fossil_db_cache_iter_cb cb, void *user_data);
 
 // ===========================================================
 // Thread Safety
@@ -234,7 +234,7 @@ void fossil_bluecrab_cacheshell_iterate(fossil_bluecrab_cache_iter_cb cb, void *
  *
  * @param enabled  true to enable locking, false to disable.
  */
-void fossil_bluecrab_cacheshell_threadsafe(bool enabled);
+void fossil_db_cacheshell_threadsafe(bool enabled);
 
 // ===========================================================
 // Persistence (Optional)
@@ -246,7 +246,7 @@ void fossil_bluecrab_cacheshell_threadsafe(bool enabled);
  * @param path  File path to save to.
  * @return      true on success, false on failure.
  */
-bool fossil_bluecrab_cacheshell_save(const char *path);
+bool fossil_db_cacheshell_save(const char *path);
 
 /**
  * @brief Loads cache state from a snapshot file.
@@ -254,7 +254,7 @@ bool fossil_bluecrab_cacheshell_save(const char *path);
  * @param path  File path to load from.
  * @return      true on success, false on failure.
  */
-bool fossil_bluecrab_cacheshell_load(const char *path);
+bool fossil_db_cacheshell_load(const char *path);
 
 #ifdef __cplusplus
 }
@@ -266,7 +266,7 @@ bool fossil_bluecrab_cacheshell_load(const char *path);
 
 namespace fossil {
 
-    namespace bluecrab {
+    namespace db {
 
         /**
          * @brief High-level C++ RAII-friendly wrapper around the C CacheShell API.
@@ -294,7 +294,7 @@ namespace fossil {
              * @return true on success, false on failure (e.g., already initialized or OOM).
              */
             static bool init(size_t max_entries = 0) {
-                return fossil_bluecrab_cacheshell_init(max_entries);
+                return fossil_db_cacheshell_init(max_entries);
             }
 
             /**
@@ -303,7 +303,7 @@ namespace fossil {
              * Safe to call multiple times; extra calls are ignored by the C layer.
              */
             static void shutdown() {
-                fossil_bluecrab_cacheshell_shutdown();
+                fossil_db_cacheshell_shutdown();
             }
 
             // -----------------------------------------------------------------
@@ -318,7 +318,7 @@ namespace fossil {
              * @return true on success, false on failure.
              */
             static bool set(const std::string& key, const std::string& value) {
-                return fossil_bluecrab_cacheshell_set(key.c_str(), value.c_str());
+                return fossil_db_cacheshell_set(key.c_str(), value.c_str());
             }
 
             /**
@@ -333,7 +333,7 @@ namespace fossil {
              *       We copy it immediately into out_value to ensure safety.
              */
             static bool get(const std::string& key, std::string& out_value, size_t max_len = 4096) {
-                char *val = fossil_bluecrab_cacheshell_get(key.c_str(), max_len);
+                char *val = fossil_db_cacheshell_get(key.c_str(), max_len);
                 if (!val)
                     return false;
                 out_value.assign(val);
@@ -345,7 +345,7 @@ namespace fossil {
              * @return true if removed, false if not present.
              */
             static bool remove(const std::string& key) {
-                return fossil_bluecrab_cacheshell_remove(key.c_str());
+                return fossil_db_cacheshell_remove(key.c_str());
             }
 
             /**
@@ -353,7 +353,7 @@ namespace fossil {
              * @return true if exists, false otherwise.
              */
             static bool exists(const std::string& key) {
-                return fossil_bluecrab_cacheshell_exists(key.c_str());
+                return fossil_db_cacheshell_exists(key.c_str());
             }
 
             // -----------------------------------------------------------------
@@ -369,7 +369,7 @@ namespace fossil {
              * @return true on success, false on failure.
              */
             static bool set_with_ttl(const std::string& key, const std::string& value, unsigned int ttl_sec) {
-                return fossil_bluecrab_cacheshell_set_with_ttl(key.c_str(), value.c_str(), ttl_sec);
+                return fossil_db_cacheshell_set_with_ttl(key.c_str(), value.c_str(), ttl_sec);
             }
 
             /**
@@ -380,7 +380,7 @@ namespace fossil {
              * @return true if updated, false if key not found.
              */
             static bool expire(const std::string& key, unsigned int ttl_sec) {
-                return fossil_bluecrab_cacheshell_expire(key.c_str(), ttl_sec);
+                return fossil_db_cacheshell_expire(key.c_str(), ttl_sec);
             }
 
             /**
@@ -390,7 +390,7 @@ namespace fossil {
              * @return Remaining seconds, or -1 if not found or no TTL set.
              */
             static int ttl(const std::string& key) {
-                return fossil_bluecrab_cacheshell_ttl(key.c_str());
+                return fossil_db_cacheshell_ttl(key.c_str());
             }
 
             /**
@@ -398,7 +398,7 @@ namespace fossil {
              * @return true if refreshed, false otherwise.
              */
             static bool touch(const std::string& key) {
-                return fossil_bluecrab_cacheshell_touch(key.c_str());
+                return fossil_db_cacheshell_touch(key.c_str());
             }
 
             /**
@@ -406,7 +406,7 @@ namespace fossil {
              * @return Count of evicted entries.
              */
             static size_t evict_expired() {
-                return fossil_bluecrab_cacheshell_evict_expired();
+                return fossil_db_cacheshell_evict_expired();
             }
 
             // -----------------------------------------------------------------
@@ -422,7 +422,7 @@ namespace fossil {
              * @return true on success, false on failure.
              */
             static bool set_binary(const std::string& key, const void* data, size_t size) {
-                return fossil_bluecrab_cacheshell_set_binary(key.c_str(), data, size);
+                return fossil_db_cacheshell_set_binary(key.c_str(), data, size);
             }
 
             /**
@@ -439,7 +439,7 @@ namespace fossil {
              * @return true if key exists, false otherwise.
              */
             static bool get_binary(const std::string& key, void* out_buf, size_t buf_size, size_t* out_size) {
-                return fossil_bluecrab_cacheshell_get_binary(key.c_str(), out_buf, buf_size, out_size);
+                return fossil_db_cacheshell_get_binary(key.c_str(), out_buf, buf_size, out_size);
             }
 
             /**
@@ -452,19 +452,19 @@ namespace fossil {
              * @return pointer to data or nullptr if not found.
              */
             static const void* get_binary_ptr(const std::string& key, size_t* out_size = nullptr) {
-                return ::fossil_bluecrab_cacheshell_get_binary(key.c_str(), out_size);
+                return ::fossil_db_cacheshell_get_binary(key.c_str(), out_size);
             }
 
         private:
             // Internal shim to emulate an extended fetch API used by get_binary_vector().
             // This creates a unified interface (key, buffer, capacity, out_size) on top
             // of the simpler C function that only returns a pointer + size.
-            static bool fossil_bluecrab_cacheshell_get_binary(const char* key,
+            static bool fossil_db_cacheshell_get_binary(const char* key,
                                                               void* out_buf,
                                                               size_t buf_size,
                                                               size_t* out_size) {
                 size_t stored_sz = 0;
-                const void* data = ::fossil_bluecrab_cacheshell_get_binary(key, &stored_sz);
+                const void* data = ::fossil_db_cacheshell_get_binary(key, &stored_sz);
                 if (!data) {
                     if (out_size) *out_size = 0;
                     return false;
@@ -491,11 +491,11 @@ namespace fossil {
              */
             static bool get_binary_vector(const std::string& key, std::vector<uint8_t>& out) {
                 size_t sz = 0;
-                if (!fossil_bluecrab_cacheshell_get_binary(key.c_str(), nullptr, 0, &sz))
+                if (!fossil_db_cacheshell_get_binary(key.c_str(), nullptr, 0, &sz))
                     return false;
                 out.resize(sz);
                 size_t got = 0;
-                if (!fossil_bluecrab_cacheshell_get_binary(key.c_str(), out.data(), sz, &got))
+                if (!fossil_db_cacheshell_get_binary(key.c_str(), out.data(), sz, &got))
                     return false;
                 out.resize(got);
                 return true;
@@ -509,21 +509,21 @@ namespace fossil {
              * @brief Remove all entries (flush).
              */
             static void clear() {
-                fossil_bluecrab_cacheshell_clear();
+                fossil_db_cacheshell_clear();
             }
 
             /**
              * @brief Number of currently stored keys.
              */
             static size_t count() {
-                return fossil_bluecrab_cacheshell_count();
+                return fossil_db_cacheshell_count();
             }
 
             /**
              * @brief Approximate memory usage in bytes (implementation-defined).
              */
             static size_t memory_usage() {
-                return fossil_bluecrab_cacheshell_memory_usage();
+                return fossil_db_cacheshell_memory_usage();
             }
 
             // -----------------------------------------------------------------
@@ -545,7 +545,7 @@ namespace fossil {
              */
             static Stats stats() {
                 Stats s;
-                fossil_bluecrab_cacheshell_stats(&s.hits, &s.misses);
+                fossil_db_cacheshell_stats(&s.hits, &s.misses);
                 return s;
             }
 
@@ -568,7 +568,7 @@ namespace fossil {
                     (*fn)(k, v, vsz);
                     }
                 };
-                fossil_bluecrab_cacheshell_iterate(&Trampoline::call,
+                fossil_db_cacheshell_iterate(&Trampoline::call,
                                 const_cast<void*>(reinterpret_cast<const void*>(&cb)));
             }
 
@@ -583,7 +583,7 @@ namespace fossil {
              *                When disabled, caller must ensure external synchronization.
              */
             static void threadsafe(bool enabled) {
-                fossil_bluecrab_cacheshell_threadsafe(enabled);
+                fossil_db_cacheshell_threadsafe(enabled);
             }
 
             // -----------------------------------------------------------------
@@ -597,7 +597,7 @@ namespace fossil {
              * @return true on success, false on failure (I/O error, permissions, etc.).
              */
             static bool save(const std::string& path) {
-                return fossil_bluecrab_cacheshell_save(path.c_str());
+                return fossil_db_cacheshell_save(path.c_str());
             }
 
             /**
@@ -609,12 +609,12 @@ namespace fossil {
              * @return true on success, false on failure.
              */
             static bool load(const std::string& path) {
-                return fossil_bluecrab_cacheshell_load(path.c_str());
+                return fossil_db_cacheshell_load(path.c_str());
             }
 
         };
 
-    } // namespace bluecrab
+    } // namespace db
 
 } // namespace fossil
 

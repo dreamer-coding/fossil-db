@@ -52,7 +52,7 @@ FOSSIL_TEARDOWN(cpp_noshell_fixture) {
 // * * * * * * * * * * * * * * * * * * * * * * * *
 
 FOSSIL_TEST(cpp_test_noshell_create_open_delete) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell.noshell";
 
     auto err = NoShell::create_database(file_name);
@@ -66,7 +66,7 @@ FOSSIL_TEST(cpp_test_noshell_create_open_delete) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_insert_find_remove) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell_insert.noshell";
     const std::string doc = "{ username: cstr: \"alice\", password: cstr: \"secret\" }";
     const std::string type = "object";
@@ -92,7 +92,7 @@ FOSSIL_TEST(cpp_test_noshell_insert_find_remove) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_insert_with_id) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell_with_id.noshell";
     const std::string doc = "{ item: cstr: \"book\" }";
     const std::string type = "object";
@@ -113,7 +113,7 @@ FOSSIL_TEST(cpp_test_noshell_insert_with_id) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_update) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell_update.noshell";
     const std::string doc = "{ name: cstr: \"bob\" }";
     const std::string new_doc = "{ name: cstr: \"bob\", age: i32: 30 }";
@@ -137,7 +137,7 @@ FOSSIL_TEST(cpp_test_noshell_update) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_backup_restore) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell_backup.noshell";
     const std::string backup_file = "test_noshell_backup_file.noshell";
     const std::string restore_file = "test_noshell_restored.noshell";
@@ -167,7 +167,7 @@ FOSSIL_TEST(cpp_test_noshell_backup_restore) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_count_and_size) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell_count.noshell";
     const std::string type = "object";
     auto err = NoShell::create_database(file_name);
@@ -192,7 +192,7 @@ FOSSIL_TEST(cpp_test_noshell_count_and_size) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_first_next_document) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell_iter.noshell";
     const std::string type = "object";
     auto err = NoShell::create_database(file_name);
@@ -218,7 +218,7 @@ FOSSIL_TEST(cpp_test_noshell_first_next_document) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_verify_database) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell_verify.noshell";
     const std::string type = "object";
     auto err = NoShell::create_database(file_name);
@@ -234,7 +234,7 @@ FOSSIL_TEST(cpp_test_noshell_verify_database) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_validate_helpers) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     ASSUME_ITS_TRUE(NoShell::validate_extension("foo.noshell"));
     ASSUME_ITS_TRUE(!NoShell::validate_extension("foo.txt"));
     ASSUME_ITS_TRUE(NoShell::validate_document("{ ok: bool: true }"));
@@ -242,7 +242,7 @@ FOSSIL_TEST(cpp_test_noshell_validate_helpers) {
 }
 
 FOSSIL_TEST(cpp_test_noshell_lock_unlock_is_locked) {
-    using fossil::bluecrab::NoShell;
+    using fossil::db::NoShell;
     const std::string file_name = "test_noshell_lock.noshell";
     auto err = NoShell::create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);

@@ -84,7 +84,7 @@ typedef enum {
     FOSSIL_NOSHELL_ERROR_INVALID_TYPE,         /**< Invalid or unrecognized data type specified. */
     FOSSIL_NOSHELL_ERROR_CONFIG_INVALID,       /**< Invalid configuration or options. */
     FOSSIL_NOSHELL_ERROR_UNKNOWN               /**< Unknown or unspecified error occurred. */
-} fossil_bluecrab_noshell_error_t;
+} fossil_db_noshell_error_t;
 
 // ============================================================================
 // FSON v2 compatible value representation (local to NoShell)
@@ -122,10 +122,10 @@ typedef enum {
     NOSHELL_FSON_TYPE_ENUM,
     NOSHELL_FSON_TYPE_DATETIME,
     NOSHELL_FSON_TYPE_DURATION
-} fossil_bluecrab_noshell_fson_type_t;
+} fossil_db_noshell_fson_type_t;
 
 typedef struct {
-    fossil_bluecrab_noshell_fson_type_t type;
+    fossil_db_noshell_fson_type_t type;
     union {
         bool b;
         int8_t   i8;
@@ -149,7 +149,7 @@ typedef struct {
         char    *datetime;
         char    *duration;
     } as;
-} fossil_bluecrab_noshell_fson_value_t;
+} fossil_db_noshell_fson_value_t;
 
 // ===========================================================
 // Document CRUD Operations
@@ -164,7 +164,7 @@ typedef struct {
  * @param type          Document type as string parameter.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert(const char *file_name, const char *document, const char *param_list, const char *type);
+fossil_db_noshell_error_t fossil_db_noshell_insert(const char *file_name, const char *document, const char *param_list, const char *type);
 
 /**
  * @brief Inserts a document and returns a unique internal ID.
@@ -177,7 +177,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert(const char *file_
  * @param id_size       Size of the buffer.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert_with_id(const char *file_name, const char *document, const char *param_list, const char *type, char *out_id, size_t id_size);
+fossil_db_noshell_error_t fossil_db_noshell_insert_with_id(const char *file_name, const char *document, const char *param_list, const char *type, char *out_id, size_t id_size);
 
 /**
  * @brief Finds a document based on a query string.
@@ -189,7 +189,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert_with_id(const cha
  * @param type_id       Optional type id parameter.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find(const char *file_name, const char *query, char *result, size_t buffer_size, const char *type_id);
+fossil_db_noshell_error_t fossil_db_noshell_find(const char *file_name, const char *query, char *result, size_t buffer_size, const char *type_id);
 
 /**
  * @brief Finds documents using a callback filter function.
@@ -199,7 +199,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find(const char *file_na
  * @param userdata      Optional user data passed to the callback.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find_cb(const char *file_name, bool (*cb)(const char *document, void *userdata), void *userdata);
+fossil_db_noshell_error_t fossil_db_noshell_find_cb(const char *file_name, bool (*cb)(const char *document, void *userdata), void *userdata);
 
 /**
  * @brief Updates a document in the database based on a query string.
@@ -211,7 +211,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find_cb(const char *file
  * @param type_id       Optional type id parameter.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_update(const char *file_name, const char *query, const char *new_document, const char *param_list, const char *type_id);
+fossil_db_noshell_error_t fossil_db_noshell_update(const char *file_name, const char *query, const char *new_document, const char *param_list, const char *type_id);
 
 /**
  * @brief Removes a document from the database based on a query string.
@@ -220,7 +220,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_update(const char *file_
  * @param query         Query string to locate document(s) to remove.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_remove(const char *file_name, const char *query);
+fossil_db_noshell_error_t fossil_db_noshell_remove(const char *file_name, const char *query);
 
 // ===========================================================
 // Database Management
@@ -232,7 +232,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_remove(const char *file_
  * @param file_name     The database file name (.crabdb enforced).
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_create_database(const char *file_name);
+fossil_db_noshell_error_t fossil_db_noshell_create_database(const char *file_name);
 
 /**
  * @brief Opens an existing database file.
@@ -240,7 +240,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_create_database(const ch
  * @param file_name     The database file name.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_open_database(const char *file_name);
+fossil_db_noshell_error_t fossil_db_noshell_open_database(const char *file_name);
 
 /**
  * @brief Deletes a database file.
@@ -248,7 +248,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_open_database(const char
  * @param file_name     The database file name.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_delete_database(const char *file_name);
+fossil_db_noshell_error_t fossil_db_noshell_delete_database(const char *file_name);
 
 /**
  * @brief Locks the database file for exclusive access.
@@ -256,7 +256,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_delete_database(const ch
  * @param file_name     The database file name.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_lock_database(const char *file_name);
+fossil_db_noshell_error_t fossil_db_noshell_lock_database(const char *file_name);
 
 /**
  * @brief Unlocks the database file.
@@ -264,7 +264,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_lock_database(const char
  * @param file_name     The database file name.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_unlock_database(const char *file_name);
+fossil_db_noshell_error_t fossil_db_noshell_unlock_database(const char *file_name);
 
 /**
  * @brief Checks if a database file is currently locked.
@@ -272,7 +272,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_unlock_database(const ch
  * @param file_name     The database file name.
  * @return              true if locked, false otherwise.
  */
-bool fossil_bluecrab_noshell_is_locked(const char *file_name);
+bool fossil_db_noshell_is_locked(const char *file_name);
 
 // ===========================================================
 // Backup, Restore, and Verification
@@ -285,7 +285,7 @@ bool fossil_bluecrab_noshell_is_locked(const char *file_name);
  * @param backup_file   The backup file path.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_backup_database(const char *source_file, const char *backup_file);
+fossil_db_noshell_error_t fossil_db_noshell_backup_database(const char *source_file, const char *backup_file);
 
 /**
  * @brief Restores a database file from a backup.
@@ -294,7 +294,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_backup_database(const ch
  * @param destination_file  The destination database file.
  * @return                  FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_restore_database(const char *backup_file, const char *destination_file);
+fossil_db_noshell_error_t fossil_db_noshell_restore_database(const char *backup_file, const char *destination_file);
 
 /**
  * @brief Verifies the integrity of all documents using internal 64-bit hashes.
@@ -303,7 +303,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_restore_database(const c
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS if all documents valid,
  *                      FOSSIL_NOSHELL_ERROR_CORRUPTED if any mismatch.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_verify_database(const char *file_name);
+fossil_db_noshell_error_t fossil_db_noshell_verify_database(const char *file_name);
 
 // ===========================================================
 // Iteration Helpers
@@ -317,7 +317,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_verify_database(const ch
  * @param buffer_size   Size of the buffer.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_first_document(const char *file_name, char *id_buffer, size_t buffer_size);
+fossil_db_noshell_error_t fossil_db_noshell_first_document(const char *file_name, char *id_buffer, size_t buffer_size);
 
 /**
  * @brief Gets the next document ID after a previous one.
@@ -328,7 +328,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_first_document(const cha
  * @param buffer_size   Size of the buffer.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, FOSSIL_NOSHELL_ERROR_NOT_FOUND if no more documents.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_next_document(const char *file_name, const char *prev_id, char *id_buffer, size_t buffer_size);
+fossil_db_noshell_error_t fossil_db_noshell_next_document(const char *file_name, const char *prev_id, char *id_buffer, size_t buffer_size);
 
 // ===========================================================
 // Metadata Helpers
@@ -341,7 +341,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_next_document(const char
  * @param count         Pointer to store document count.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_count_documents(const char *file_name, size_t *count);
+fossil_db_noshell_error_t fossil_db_noshell_count_documents(const char *file_name, size_t *count);
 
 /**
  * @brief Gets the size of the database file in bytes.
@@ -350,7 +350,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_count_documents(const ch
  * @param size_bytes    Pointer to store the file size.
  * @return              FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
  */
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_get_file_size(const char *file_name, size_t *size_bytes);
+fossil_db_noshell_error_t fossil_db_noshell_get_file_size(const char *file_name, size_t *size_bytes);
 
 // ===========================================================
 // Validation Helpers
@@ -362,7 +362,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_get_file_size(const char
  * @param file_name     The database file name.
  * @return              true if the extension is valid (.crabdb), false otherwise.
  */
-bool fossil_bluecrab_noshell_validate_extension(const char *file_name);
+bool fossil_db_noshell_validate_extension(const char *file_name);
 
 /**
  * @brief Validates a document string.
@@ -370,7 +370,7 @@ bool fossil_bluecrab_noshell_validate_extension(const char *file_name);
  * @param document      The document string to validate.
  * @return              true if valid, false otherwise.
  */
-bool fossil_bluecrab_noshell_validate_document(const char *document);
+bool fossil_db_noshell_validate_document(const char *document);
 
 #ifdef __cplusplus
 }
@@ -378,7 +378,7 @@ bool fossil_bluecrab_noshell_validate_document(const char *document);
 
 namespace fossil {
 
-    namespace bluecrab {
+    namespace db {
 
         /**
          * @brief C++ wrapper class for NoShell database operations.
@@ -395,10 +395,10 @@ namespace fossil {
              * @param type Document type as string parameter (can be empty).
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t insert(const std::string& file_name, const std::string& document, const std::string& param_list = "", const std::string& type = "") {
+            static fossil_db_noshell_error_t insert(const std::string& file_name, const std::string& document, const std::string& param_list = "", const std::string& type = "") {
                 const char* param = param_list.empty() ? nullptr : param_list.c_str();
                 const char* type_str = type.empty() ? nullptr : type.c_str();
-                return fossil_bluecrab_noshell_insert(file_name.c_str(), document.c_str(), param, type_str);
+                return fossil_db_noshell_insert(file_name.c_str(), document.c_str(), param, type_str);
             }
 
             /**
@@ -410,11 +410,11 @@ namespace fossil {
              * @param out_id Reference to a string to store the generated document ID.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t insert_with_id(const std::string& file_name, const std::string& document, const std::string& param_list, const std::string& type, std::string& out_id) {
+            static fossil_db_noshell_error_t insert_with_id(const std::string& file_name, const std::string& document, const std::string& param_list, const std::string& type, std::string& out_id) {
                 char buffer[128] = {0};
                 const char* param = param_list.empty() ? nullptr : param_list.c_str();
                 const char* type_str = type.empty() ? nullptr : type.c_str();
-                fossil_bluecrab_noshell_error_t err = fossil_bluecrab_noshell_insert_with_id(file_name.c_str(), document.c_str(), param, type_str, buffer, sizeof(buffer));
+                fossil_db_noshell_error_t err = fossil_db_noshell_insert_with_id(file_name.c_str(), document.c_str(), param, type_str, buffer, sizeof(buffer));
                 if (err == FOSSIL_NOSHELL_ERROR_SUCCESS) {
                     out_id = buffer;
                 }
@@ -429,10 +429,10 @@ namespace fossil {
              * @param type_id Optional type id parameter (can be empty).
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t find(const std::string& file_name, const std::string& query, std::string& result, const std::string& type_id = "") {
+            static fossil_db_noshell_error_t find(const std::string& file_name, const std::string& query, std::string& result, const std::string& type_id = "") {
                 char buffer[4096] = {0};
                 const char* type_str = type_id.empty() ? nullptr : type_id.c_str();
-                fossil_bluecrab_noshell_error_t err = fossil_bluecrab_noshell_find(file_name.c_str(), query.c_str(), buffer, sizeof(buffer), type_str);
+                fossil_db_noshell_error_t err = fossil_db_noshell_find(file_name.c_str(), query.c_str(), buffer, sizeof(buffer), type_str);
                 if (err == FOSSIL_NOSHELL_ERROR_SUCCESS) {
                     result = buffer;
                 }
@@ -448,10 +448,10 @@ namespace fossil {
              * @param type_id Optional type id parameter (can be empty).
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t update(const std::string& file_name, const std::string& query, const std::string& new_document, const std::string& param_list = "", const std::string& type_id = "") {
+            static fossil_db_noshell_error_t update(const std::string& file_name, const std::string& query, const std::string& new_document, const std::string& param_list = "", const std::string& type_id = "") {
                 const char* param = param_list.empty() ? nullptr : param_list.c_str();
                 const char* type_str = type_id.empty() ? nullptr : type_id.c_str();
-                return fossil_bluecrab_noshell_update(file_name.c_str(), query.c_str(), new_document.c_str(), param, type_str);
+                return fossil_db_noshell_update(file_name.c_str(), query.c_str(), new_document.c_str(), param, type_str);
             }
 
             /**
@@ -460,8 +460,8 @@ namespace fossil {
              * @param query Query string to locate document(s) to remove.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t remove(const std::string& file_name, const std::string& query) {
-                return fossil_bluecrab_noshell_remove(file_name.c_str(), query.c_str());
+            static fossil_db_noshell_error_t remove(const std::string& file_name, const std::string& query) {
+                return fossil_db_noshell_remove(file_name.c_str(), query.c_str());
             }
 
             /**
@@ -469,8 +469,8 @@ namespace fossil {
              * @param file_name The database file name (.crabdb enforced).
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t create_database(const std::string& file_name) {
-                return fossil_bluecrab_noshell_create_database(file_name.c_str());
+            static fossil_db_noshell_error_t create_database(const std::string& file_name) {
+                return fossil_db_noshell_create_database(file_name.c_str());
             }
 
             /**
@@ -478,8 +478,8 @@ namespace fossil {
              * @param file_name The database file name.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t open_database(const std::string& file_name) {
-                return fossil_bluecrab_noshell_open_database(file_name.c_str());
+            static fossil_db_noshell_error_t open_database(const std::string& file_name) {
+                return fossil_db_noshell_open_database(file_name.c_str());
             }
 
             /**
@@ -487,8 +487,8 @@ namespace fossil {
              * @param file_name The database file name.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t delete_database(const std::string& file_name) {
-                return fossil_bluecrab_noshell_delete_database(file_name.c_str());
+            static fossil_db_noshell_error_t delete_database(const std::string& file_name) {
+                return fossil_db_noshell_delete_database(file_name.c_str());
             }
 
             /**
@@ -496,8 +496,8 @@ namespace fossil {
              * @param file_name The database file name.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t lock_database(const std::string& file_name) {
-                return fossil_bluecrab_noshell_lock_database(file_name.c_str());
+            static fossil_db_noshell_error_t lock_database(const std::string& file_name) {
+                return fossil_db_noshell_lock_database(file_name.c_str());
             }
 
             /**
@@ -505,8 +505,8 @@ namespace fossil {
              * @param file_name The database file name.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t unlock_database(const std::string& file_name) {
-                return fossil_bluecrab_noshell_unlock_database(file_name.c_str());
+            static fossil_db_noshell_error_t unlock_database(const std::string& file_name) {
+                return fossil_db_noshell_unlock_database(file_name.c_str());
             }
 
             /**
@@ -515,7 +515,7 @@ namespace fossil {
              * @return true if locked, false otherwise.
              */
             static bool is_locked(const std::string& file_name) {
-                return fossil_bluecrab_noshell_is_locked(file_name.c_str());
+                return fossil_db_noshell_is_locked(file_name.c_str());
             }
 
             /**
@@ -524,8 +524,8 @@ namespace fossil {
              * @param backup_file The backup file path.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t backup_database(const std::string& source_file, const std::string& backup_file) {
-                return fossil_bluecrab_noshell_backup_database(source_file.c_str(), backup_file.c_str());
+            static fossil_db_noshell_error_t backup_database(const std::string& source_file, const std::string& backup_file) {
+                return fossil_db_noshell_backup_database(source_file.c_str(), backup_file.c_str());
             }
 
             /**
@@ -534,8 +534,8 @@ namespace fossil {
              * @param destination_file The destination database file.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t restore_database(const std::string& backup_file, const std::string& destination_file) {
-                return fossil_bluecrab_noshell_restore_database(backup_file.c_str(), destination_file.c_str());
+            static fossil_db_noshell_error_t restore_database(const std::string& backup_file, const std::string& destination_file) {
+                return fossil_db_noshell_restore_database(backup_file.c_str(), destination_file.c_str());
             }
 
             /**
@@ -543,8 +543,8 @@ namespace fossil {
              * @param file_name The database file name.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS if all documents valid, error code otherwise.
              */
-            static fossil_bluecrab_noshell_error_t verify_database(const std::string& file_name) {
-                return fossil_bluecrab_noshell_verify_database(file_name.c_str());
+            static fossil_db_noshell_error_t verify_database(const std::string& file_name) {
+                return fossil_db_noshell_verify_database(file_name.c_str());
             }
 
             /**
@@ -553,9 +553,9 @@ namespace fossil {
              * @param id Reference to a string to store the first document ID.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t first_document(const std::string& file_name, std::string& id) {
+            static fossil_db_noshell_error_t first_document(const std::string& file_name, std::string& id) {
                 char buffer[128] = {0};
-                fossil_bluecrab_noshell_error_t err = fossil_bluecrab_noshell_first_document(file_name.c_str(), buffer, sizeof(buffer));
+                fossil_db_noshell_error_t err = fossil_db_noshell_first_document(file_name.c_str(), buffer, sizeof(buffer));
                 if (err == FOSSIL_NOSHELL_ERROR_SUCCESS) {
                     id = buffer;
                 }
@@ -569,9 +569,9 @@ namespace fossil {
              * @param id Reference to a string to store the next document ID.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, FOSSIL_NOSHELL_ERROR_NOT_FOUND if no more documents.
              */
-            static fossil_bluecrab_noshell_error_t next_document(const std::string& file_name, const std::string& prev_id, std::string& id) {
+            static fossil_db_noshell_error_t next_document(const std::string& file_name, const std::string& prev_id, std::string& id) {
                 char buffer[128] = {0};
-                fossil_bluecrab_noshell_error_t err = fossil_bluecrab_noshell_next_document(file_name.c_str(), prev_id.c_str(), buffer, sizeof(buffer));
+                fossil_db_noshell_error_t err = fossil_db_noshell_next_document(file_name.c_str(), prev_id.c_str(), buffer, sizeof(buffer));
                 if (err == FOSSIL_NOSHELL_ERROR_SUCCESS) {
                     id = buffer;
                 }
@@ -584,8 +584,8 @@ namespace fossil {
              * @param count Reference to a size_t to store document count.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t count_documents(const std::string& file_name, size_t& count) {
-                return fossil_bluecrab_noshell_count_documents(file_name.c_str(), &count);
+            static fossil_db_noshell_error_t count_documents(const std::string& file_name, size_t& count) {
+                return fossil_db_noshell_count_documents(file_name.c_str(), &count);
             }
 
             /**
@@ -594,8 +594,8 @@ namespace fossil {
              * @param size_bytes Reference to a size_t to store the file size.
              * @return FOSSIL_NOSHELL_ERROR_SUCCESS on success, otherwise error code.
              */
-            static fossil_bluecrab_noshell_error_t get_file_size(const std::string& file_name, size_t& size_bytes) {
-                return fossil_bluecrab_noshell_get_file_size(file_name.c_str(), &size_bytes);
+            static fossil_db_noshell_error_t get_file_size(const std::string& file_name, size_t& size_bytes) {
+                return fossil_db_noshell_get_file_size(file_name.c_str(), &size_bytes);
             }
 
             /**
@@ -604,7 +604,7 @@ namespace fossil {
              * @return true if the extension is valid (.crabdb), false otherwise.
              */
             static bool validate_extension(const std::string& file_name) {
-                return fossil_bluecrab_noshell_validate_extension(file_name.c_str());
+                return fossil_db_noshell_validate_extension(file_name.c_str());
             }
 
             /**
@@ -613,11 +613,11 @@ namespace fossil {
              * @return true if valid, false otherwise.
              */
             static bool validate_document(const std::string& document) {
-                return fossil_bluecrab_noshell_validate_document(document.c_str());
+                return fossil_db_noshell_validate_document(document.c_str());
             }
         };
 
-    } // namespace bluecrab
+    } // namespace db
 
 } // namespace fossil
 

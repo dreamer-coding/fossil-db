@@ -49,7 +49,7 @@ FOSSIL_TEARDOWN(cpp_cacheshell_fixture) {
 
 // CacheShell API tests
 
-using CacheShell = fossil::bluecrab::CacheShell;
+using CacheShell = fossil::db::CacheShell;
 
 FOSSIL_TEST(cpp_test_cacheshell_set_and_get) {
     CacheShell::init(0);
