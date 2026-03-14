@@ -8,6 +8,7 @@ dep = [
 
 fossil_crabdb_lib = library('fossil_crabdb',
     files(
+        'bluecrab.c',
         'myshell.c',
         'noshell.c',
         'cacheshell.c'
