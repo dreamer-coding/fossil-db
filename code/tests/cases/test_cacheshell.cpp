@@ -68,7 +68,7 @@ FOSSIL_TEST(cpp_test_cacheshell_set_and_get) {
     ASSUME_ITS_TRUE(out == new_value);
 
     // Direct C API small-buffer check (wrapper always copies full string).
-    char *small_out = fossil_bluecrab_cacheshell_get(key.c_str(), 2);
+    char *small_out = fossil_db_cacheshell_get(key.c_str(), 2);
     ASSUME_ITS_TRUE(small_out);
     ASSUME_ITS_TRUE(small_out[0] == 'b');
 
