@@ -25,7 +25,7 @@
 #include "fossil/crabdb/myshell.h"
 
 /**
- * @brief Implements the core logic for the Fossil BlueCrab .myshell file database.
+ * @brief Implements the core logic for the Fossil db .myshell file database.
  *
  * This file provides functions for managing a simple versioned key-value store
  * using the ".myshell" file format. It supports operations such as open, create,
@@ -116,7 +116,7 @@
  * - `fossil_myshell_check_integrity`: Verifies file and commit integrity.
  *
  * ## Error Handling
- * All functions return a `fossil_bluecrab_myshell_error_t` code indicating success or the type of error.
+ * All functions return a `fossil_db_myshell_error_t` code indicating success or the type of error.
  *
  * ## Usage Notes
  * - Only files with the ".myshell" extension are supported.
@@ -152,7 +152,7 @@ static const char *myshell_fson_type_names[] = {
     "duration"   // MYSHELL_FSON_TYPE_DURATION
 };
 
-static inline const char *myshell_fson_type_to_string(fossil_bluecrab_myshell_fson_type_t type) {
+static inline const char *myshell_fson_type_to_string(fossil_db_myshell_fson_type_t type) {
     if (type < 0 || type > MYSHELL_FSON_TYPE_DURATION)
         return "unknown";
     return myshell_fson_type_names[type];
@@ -214,7 +214,7 @@ uint64_t myshell_hash64(const char *str) {
     return hash;
 }
 
-fossil_bluecrab_myshell_t *fossil_myshell_open(const char *path, fossil_bluecrab_myshell_error_t *err) {
+fossil_db_myshell_t *fossil_myshell_open(const char *path, fossil_db_myshell_error_t *err) {
     if (!path) {
         if (err) *err = FOSSIL_MYSHELL_ERROR_INVALID_FILE;
         return NULL;
@@ -233,7 +233,7 @@ fossil_bluecrab_myshell_t *fossil_myshell_open(const char *path, fossil_bluecrab
         return NULL;
     }
 
-    fossil_bluecrab_myshell_t *db = (fossil_bluecrab_myshell_t *)calloc(1, sizeof(fossil_bluecrab_myshell_t));
+    fossil_db_myshell_t *db = (fossil_db_myshell_t *)calloc(1, sizeof(fossil_db_myshell_t));
     if (!db) {
         fclose(file);
         if (err) *err = FOSSIL_MYSHELL_ERROR_OUT_OF_MEMORY;
@@ -314,7 +314,7 @@ fossil_bluecrab_myshell_t *fossil_myshell_open(const char *path, fossil_bluecrab
     return db;
 }
 
-fossil_bluecrab_myshell_t *fossil_myshell_create(const char *path, fossil_bluecrab_myshell_error_t *err) {
+fossil_db_myshell_t *fossil_myshell_create(const char *path, fossil_db_myshell_error_t *err) {
     if (!path) {
         if (err) *err = FOSSIL_MYSHELL_ERROR_INVALID_FILE;
         return NULL;
@@ -349,7 +349,7 @@ fossil_bluecrab_myshell_t *fossil_myshell_create(const char *path, fossil_bluecr
     }
     fprintf(file, "\n");
 
-    fossil_bluecrab_myshell_t *db = (fossil_bluecrab_myshell_t *)calloc(1, sizeof(fossil_bluecrab_myshell_t));
+    fossil_db_myshell_t *db = (fossil_db_myshell_t *)calloc(1, sizeof(fossil_db_myshell_t));
     if (!db) {
         fclose(file);
         if (err) *err = FOSSIL_MYSHELL_ERROR_OUT_OF_MEMORY;
@@ -377,7 +377,7 @@ fossil_bluecrab_myshell_t *fossil_myshell_create(const char *path, fossil_bluecr
     return db;
 }
 
-void fossil_myshell_close(fossil_bluecrab_myshell_t *db) {
+void fossil_myshell_close(fossil_db_myshell_t *db) {
     if (db) {
         if (db->file) {
             fclose(db->file);
@@ -407,7 +407,7 @@ void fossil_myshell_close(fossil_bluecrab_myshell_t *db) {
     }
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_put(fossil_bluecrab_myshell_t *db, const char *key, const char *type, const char *value) {
+fossil_db_myshell_error_t fossil_myshell_put(fossil_db_myshell_t *db, const char *key, const char *type, const char *value) {
     if (!db || !db->is_open) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -419,11 +419,11 @@ fossil_bluecrab_myshell_error_t fossil_myshell_put(fossil_bluecrab_myshell_t *db
     }
 
     // Validate type against FSON type system
-    fossil_bluecrab_myshell_fson_type_t type_id = MYSHELL_FSON_TYPE_NULL;
+    fossil_db_myshell_fson_type_t type_id = MYSHELL_FSON_TYPE_NULL;
     bool valid_type = false;
     for (size_t i = 0; i <= MYSHELL_FSON_TYPE_DURATION; ++i) {
         if (strcmp(type, myshell_fson_type_names[i]) == 0) {
-            type_id = (fossil_bluecrab_myshell_fson_type_t)i;
+            type_id = (fossil_db_myshell_fson_type_t)i;
             valid_type = true;
             break;
         }
@@ -499,8 +499,8 @@ fossil_bluecrab_myshell_error_t fossil_myshell_put(fossil_bluecrab_myshell_t *db
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_get(
-    fossil_bluecrab_myshell_t *db,
+fossil_db_myshell_error_t fossil_myshell_get(
+    fossil_db_myshell_t *db,
     const char *key,
     char *out_value,
     size_t out_size
@@ -578,7 +578,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_get(
     return FOSSIL_MYSHELL_ERROR_NOT_FOUND;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_del(fossil_bluecrab_myshell_t *db, const char *key) {
+fossil_db_myshell_error_t fossil_myshell_del(fossil_db_myshell_t *db, const char *key) {
     if (!db || !db->is_open) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -682,7 +682,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_del(fossil_bluecrab_myshell_t *db
     }
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_commit(fossil_bluecrab_myshell_t *db, const char *message) {
+fossil_db_myshell_error_t fossil_myshell_commit(fossil_db_myshell_t *db, const char *message) {
     if (!db) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -750,7 +750,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_commit(fossil_bluecrab_myshell_t 
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_branch(fossil_bluecrab_myshell_t *db, const char *branch_name) {
+fossil_db_myshell_error_t fossil_myshell_branch(fossil_db_myshell_t *db, const char *branch_name) {
     if (!db) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -787,7 +787,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_branch(fossil_bluecrab_myshell_t 
     db->commit_head = myshell_hash64(branch_name);
 
     // FSON type system: branch is always type "enum"
-    fossil_bluecrab_myshell_fson_type_t type_id = MYSHELL_FSON_TYPE_ENUM;
+    fossil_db_myshell_fson_type_t type_id = MYSHELL_FSON_TYPE_ENUM;
 
     // Optionally, write branch info to the file for history (simple append)
     if (fseek(db->file, 0, SEEK_END) != 0) {
@@ -814,7 +814,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_branch(fossil_bluecrab_myshell_t 
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_checkout(fossil_bluecrab_myshell_t *db, const char *branch_or_commit) {
+fossil_db_myshell_error_t fossil_myshell_checkout(fossil_db_myshell_t *db, const char *branch_or_commit) {
     if (!db) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -880,7 +880,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_checkout(fossil_bluecrab_myshell_
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_merge(fossil_bluecrab_myshell_t *db, const char *source_branch, const char *message) {
+fossil_db_myshell_error_t fossil_myshell_merge(fossil_db_myshell_t *db, const char *source_branch, const char *message) {
     if (!db) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -900,7 +900,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_merge(fossil_bluecrab_myshell_t *
     uint64_t source_hash = myshell_hash64(source_branch);
     bool branch_found = false;
     char found_branch_name[512] = {0};
-    fossil_bluecrab_myshell_fson_type_t branch_type = MYSHELL_FSON_TYPE_ENUM;
+    fossil_db_myshell_fson_type_t branch_type = MYSHELL_FSON_TYPE_ENUM;
     fseek(db->file, 0, SEEK_SET);
     char line[1024];
     while (fgets(line, sizeof(line), db->file)) {
@@ -919,7 +919,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_merge(fossil_bluecrab_myshell_t *
                     if (n == 3) {
                         for (size_t i = 0; i <= MYSHELL_FSON_TYPE_DURATION; ++i) {
                             if (strcmp(type_name, myshell_fson_type_names[i]) == 0) {
-                                branch_type = (fossil_bluecrab_myshell_fson_type_t)i;
+                                branch_type = (fossil_db_myshell_fson_type_t)i;
                                 break;
                             }
                         }
@@ -967,7 +967,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_merge(fossil_bluecrab_myshell_t *
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_revert(fossil_bluecrab_myshell_t *db, const char *commit_hash) {
+fossil_db_myshell_error_t fossil_myshell_revert(fossil_db_myshell_t *db, const char *commit_hash) {
     if (!db) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -981,7 +981,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_revert(fossil_bluecrab_myshell_t 
     uint64_t hash = myshell_hash64(commit_hash);
 
     bool commit_found = false;
-    fossil_bluecrab_myshell_fson_type_t found_type = MYSHELL_FSON_TYPE_NULL;
+    fossil_db_myshell_fson_type_t found_type = MYSHELL_FSON_TYPE_NULL;
     fseek(db->file, 0, SEEK_SET);
     char line[1024];
     while (fgets(line, sizeof(line), db->file)) {
@@ -998,7 +998,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_revert(fossil_bluecrab_myshell_t 
                     if (n == 2) {
                         for (size_t i = 0; i <= MYSHELL_FSON_TYPE_DURATION; ++i) {
                             if (strcmp(type_name, myshell_fson_type_names[i]) == 0) {
-                                found_type = (fossil_bluecrab_myshell_fson_type_t)i;
+                                found_type = (fossil_db_myshell_fson_type_t)i;
                                 break;
                             }
                         }
@@ -1029,7 +1029,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_revert(fossil_bluecrab_myshell_t 
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_stage(fossil_bluecrab_myshell_t *db, const char *key, const char *type, const char *value) {
+fossil_db_myshell_error_t fossil_myshell_stage(fossil_db_myshell_t *db, const char *key, const char *type, const char *value) {
     if (!db || !db->is_open) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -1041,11 +1041,11 @@ fossil_bluecrab_myshell_error_t fossil_myshell_stage(fossil_bluecrab_myshell_t *
     }
 
     // Validate type against FSON type system
-    fossil_bluecrab_myshell_fson_type_t type_id = MYSHELL_FSON_TYPE_NULL;
+    fossil_db_myshell_fson_type_t type_id = MYSHELL_FSON_TYPE_NULL;
     bool valid_type = false;
     for (size_t i = 0; i <= MYSHELL_FSON_TYPE_DURATION; ++i) {
         if (strcmp(type, myshell_fson_type_names[i]) == 0) {
-            type_id = (fossil_bluecrab_myshell_fson_type_t)i;
+            type_id = (fossil_db_myshell_fson_type_t)i;
             valid_type = true;
             break;
         }
@@ -1118,7 +1118,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_stage(fossil_bluecrab_myshell_t *
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_unstage(fossil_bluecrab_myshell_t *db, const char *key) {
+fossil_db_myshell_error_t fossil_myshell_unstage(fossil_db_myshell_t *db, const char *key) {
     if (!db || !db->is_open) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -1208,7 +1208,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_unstage(fossil_bluecrab_myshell_t
     return found ? FOSSIL_MYSHELL_ERROR_SUCCESS : FOSSIL_MYSHELL_ERROR_NOT_FOUND;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_tag(fossil_bluecrab_myshell_t *db, const char *commit_hash, const char *tag_name) {
+fossil_db_myshell_error_t fossil_myshell_tag(fossil_db_myshell_t *db, const char *commit_hash, const char *tag_name) {
     if (!db) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -1222,7 +1222,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_tag(fossil_bluecrab_myshell_t *db
     uint64_t hash = myshell_hash64(commit_hash);
 
     bool commit_found = false;
-    fossil_bluecrab_myshell_fson_type_t commit_type = MYSHELL_FSON_TYPE_ENUM;
+    fossil_db_myshell_fson_type_t commit_type = MYSHELL_FSON_TYPE_ENUM;
     fseek(db->file, 0, SEEK_SET);
     char line[1024];
     while (fgets(line, sizeof(line), db->file)) {
@@ -1238,7 +1238,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_tag(fossil_bluecrab_myshell_t *db
                     if (n == 2) {
                         for (size_t i = 0; i <= MYSHELL_FSON_TYPE_DURATION; ++i) {
                             if (strcmp(type_name, myshell_fson_type_names[i]) == 0) {
-                                commit_type = (fossil_bluecrab_myshell_fson_type_t)i;
+                                commit_type = (fossil_db_myshell_fson_type_t)i;
                                 break;
                             }
                         }
@@ -1267,7 +1267,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_tag(fossil_bluecrab_myshell_t *db
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_log(fossil_bluecrab_myshell_t *db, fossil_myshell_commit_cb cb, void *user) {
+fossil_db_myshell_error_t fossil_myshell_log(fossil_db_myshell_t *db, fossil_myshell_commit_cb cb, void *user) {
     if (!db) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -1321,7 +1321,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_log(fossil_bluecrab_myshell_t *db
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_backup(fossil_bluecrab_myshell_t *db, const char *backup_path) {
+fossil_db_myshell_error_t fossil_myshell_backup(fossil_db_myshell_t *db, const char *backup_path) {
     if (!db || !db->is_open) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -1369,7 +1369,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_backup(fossil_bluecrab_myshell_t 
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_restore(const char *backup_path, const char *target_path) {
+fossil_db_myshell_error_t fossil_myshell_restore(const char *backup_path, const char *target_path) {
     if (!backup_path || !target_path) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -1459,7 +1459,7 @@ fossil_bluecrab_myshell_error_t fossil_myshell_restore(const char *backup_path, 
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-const char *fossil_myshell_errstr(fossil_bluecrab_myshell_error_t err) {
+const char *fossil_myshell_errstr(fossil_db_myshell_error_t err) {
     switch (err) {
         case FOSSIL_MYSHELL_ERROR_SUCCESS: return "Success";
         case FOSSIL_MYSHELL_ERROR_INVALID_FILE: return "Invalid file";
@@ -1492,7 +1492,7 @@ const char *fossil_myshell_errstr(fossil_bluecrab_myshell_error_t err) {
     }
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_check_integrity(fossil_bluecrab_myshell_t *db) {
+fossil_db_myshell_error_t fossil_myshell_check_integrity(fossil_db_myshell_t *db) {
     if (!db || !db->is_open) {
         return FOSSIL_MYSHELL_ERROR_INVALID_FILE;
     }
@@ -1613,9 +1613,9 @@ fossil_bluecrab_myshell_error_t fossil_myshell_check_integrity(fossil_bluecrab_m
     return FOSSIL_MYSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_myshell_error_t fossil_myshell_diff(
-    const fossil_bluecrab_myshell_t *db1,
-    const fossil_bluecrab_myshell_t *db2,
+fossil_db_myshell_error_t fossil_myshell_diff(
+    const fossil_db_myshell_t *db1,
+    const fossil_db_myshell_t *db2,
     char *out_diff,
     size_t out_size
 ) {

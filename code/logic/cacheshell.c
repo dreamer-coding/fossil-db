@@ -34,7 +34,7 @@ typedef CRITICAL_SECTION pthread_mutex_t;
 #endif
 
 /**
- * @brief In-memory key/value cache (BlueCrab CacheShell).
+ * @brief In-memory key/value cache (db CacheShell).
  *
  * High-level:
  *   A fixed-size hash table (1024 buckets) using separate chaining stores
@@ -78,7 +78,7 @@ typedef CRITICAL_SECTION pthread_mutex_t;
  *   - When fetched:
  *       if (expiry != 0 && expiry <= now) -> removed + miss
  *   - Bulk cleanup:
- *       fossil_bluecrab_cacheshell_evict_expired()
+ *       fossil_db_cacheshell_evict_expired()
  *
  *   Timeline (example):
  *       set_with_ttl(K, 5s) at t=10
@@ -88,7 +88,7 @@ typedef CRITICAL_SECTION pthread_mutex_t;
  *
  * Thread Safety:
  *   - Disabled by default for zero overhead.
- *   - fossil_bluecrab_cacheshell_threadsafe(true) enables a global lock:
+ *   - fossil_db_cacheshell_threadsafe(true) enables a global lock:
  *
  *        Public API:
  *            lock()
@@ -117,23 +117,23 @@ typedef CRITICAL_SECTION pthread_mutex_t;
  *
  * Example Usage:
  *
- *   if (fossil_bluecrab_cacheshell_init(10000)) {
- *       fossil_bluecrab_cacheshell_threadsafe(true);
- *       fossil_bluecrab_cacheshell_set("greet", "hello");
+ *   if (fossil_db_cacheshell_init(10000)) {
+ *       fossil_db_cacheshell_threadsafe(true);
+ *       fossil_db_cacheshell_set("greet", "hello");
  *
  *       char buf[32];
- *       if (fossil_bluecrab_cacheshell_get("greet", buf, sizeof buf)) {
+ *       if (fossil_db_cacheshell_get("greet", buf, sizeof buf)) {
  *           // buf == "hello"
  *       }
  *
- *       fossil_bluecrab_cacheshell_set_with_ttl("temp", "123", 3);
- *       // ... after >3s fossil_bluecrab_cacheshell_get("temp") -> miss
+ *       fossil_db_cacheshell_set_with_ttl("temp", "123", 3);
+ *       // ... after >3s fossil_db_cacheshell_get("temp") -> miss
  *
- *       fossil_bluecrab_cacheshell_save("dump.cache");
- *       fossil_bluecrab_cacheshell_clear();
- *       fossil_bluecrab_cacheshell_load("dump.cache");
+ *       fossil_db_cacheshell_save("dump.cache");
+ *       fossil_db_cacheshell_clear();
+ *       fossil_db_cacheshell_load("dump.cache");
  *
- *       fossil_bluecrab_cacheshell_shutdown();
+ *       fossil_db_cacheshell_shutdown();
  *   }
  *
  * ASCII Flow (lookup):
@@ -157,7 +157,7 @@ typedef CRITICAL_SECTION pthread_mutex_t;
  *   - iterate: O(total_entries)
  *
  * Safety Notes:
- *   - Caller must provide adequate buffer for fossil_bluecrab_cacheshell_get
+ *   - Caller must provide adequate buffer for fossil_db_cacheshell_get
  *   - Binary retrieval requires caller to check returned size (out_size)
  */
 
@@ -364,7 +364,7 @@ static fossil_cache_entry_t *fossil_cache_find(const char *key) {
 // Initialization / Lifecycle
 // ===========================================================
 
-bool fossil_bluecrab_cacheshell_init(size_t max_entries) {
+bool fossil_db_cacheshell_init(size_t max_entries) {
     if (g_cache.buckets) // already initialized
         return true;
 
@@ -383,7 +383,7 @@ bool fossil_bluecrab_cacheshell_init(size_t max_entries) {
     return true;
 }
 
-void fossil_bluecrab_cacheshell_shutdown(void) {
+void fossil_db_cacheshell_shutdown(void) {
     if (!g_cache.buckets)
         return;
 
@@ -415,13 +415,13 @@ void fossil_bluecrab_cacheshell_shutdown(void) {
 // Basic Key/Value Operations
 // ===========================================================
 
-bool fossil_bluecrab_cacheshell_set(const char *key, const char *value) {
+bool fossil_db_cacheshell_set(const char *key, const char *value) {
     if (!key || !value)
         return false;
-    return fossil_bluecrab_cacheshell_set_binary(key, value, strlen(value) + 1);
+    return fossil_db_cacheshell_set_binary(key, value, strlen(value) + 1);
 }
 
-char *fossil_bluecrab_cacheshell_get(const char *key, size_t buffer_size) {
+char *fossil_db_cacheshell_get(const char *key, size_t buffer_size) {
     if (!key || buffer_size == 0)
         return NULL;
 
@@ -466,7 +466,7 @@ char *fossil_bluecrab_cacheshell_get(const char *key, size_t buffer_size) {
     return out;
 }
 
-bool fossil_bluecrab_cacheshell_remove(const char *key) {
+bool fossil_db_cacheshell_remove(const char *key) {
     if (!key)
         return false;
     fossil_cache_lock();
@@ -476,7 +476,7 @@ bool fossil_bluecrab_cacheshell_remove(const char *key) {
     return (before != g_cache.entry_count);
 }
 
-bool fossil_bluecrab_cacheshell_exists(const char *key) {
+bool fossil_db_cacheshell_exists(const char *key) {
     if (!key) return false;
 
     fossil_cache_lock();
@@ -526,10 +526,10 @@ bool fossil_bluecrab_cacheshell_exists(const char *key) {
 
 // Avoids double-locking by calling the existing setter first (it handles locking)
 // then setting TTL under a separate lock. Also initializes created/last_access.
-bool fossil_bluecrab_cacheshell_set_with_ttl(const char *key, const char *value, unsigned int ttl_sec) {
+bool fossil_db_cacheshell_set_with_ttl(const char *key, const char *value, unsigned int ttl_sec) {
     if (!key || !value) return false;
     size_t len = strlen(value) + 1;
-    if (!fossil_bluecrab_cacheshell_set_binary(key, value, len))
+    if (!fossil_db_cacheshell_set_binary(key, value, len))
         return false;
     if (ttl_sec == 0) return true;
 
@@ -553,9 +553,9 @@ bool fossil_bluecrab_cacheshell_set_with_ttl(const char *key, const char *value,
 }
 
 // Binary variant for completeness.
-bool fossil_bluecrab_cacheshell_set_binary_with_ttl(const char *key, const void *data, size_t size, unsigned int ttl_sec) {
+bool fossil_db_cacheshell_set_binary_with_ttl(const char *key, const void *data, size_t size, unsigned int ttl_sec) {
     if (!key || !data) return false;
-    if (!fossil_bluecrab_cacheshell_set_binary(key, data, size))
+    if (!fossil_db_cacheshell_set_binary(key, data, size))
         return false;
     if (ttl_sec == 0) return true;
 
@@ -578,7 +578,7 @@ bool fossil_bluecrab_cacheshell_set_binary_with_ttl(const char *key, const void 
     return true;
 }
 
-bool fossil_bluecrab_cacheshell_expire(const char *key, unsigned int ttl_sec) {
+bool fossil_db_cacheshell_expire(const char *key, unsigned int ttl_sec) {
     if (!key) return false;
 
     fossil_cache_lock();
@@ -624,7 +624,7 @@ bool fossil_bluecrab_cacheshell_expire(const char *key, unsigned int ttl_sec) {
     return false;
 }
 
-int fossil_bluecrab_cacheshell_ttl(const char *key) {
+int fossil_db_cacheshell_ttl(const char *key) {
     if (!key) return -1;
 
     fossil_cache_lock();
@@ -670,7 +670,7 @@ int fossil_bluecrab_cacheshell_ttl(const char *key) {
     return -1;
 }
 
-bool fossil_bluecrab_cacheshell_touch(const char *key) {
+bool fossil_db_cacheshell_touch(const char *key) {
     if (!key) return false;
 
     fossil_cache_lock();
@@ -732,7 +732,7 @@ bool fossil_bluecrab_cacheshell_touch(const char *key) {
     return false;
 }
 
-size_t fossil_bluecrab_cacheshell_evict_expired(void) {
+size_t fossil_db_cacheshell_evict_expired(void) {
     fossil_cache_lock();
     if (!g_cache.buckets) {
         fossil_cache_unlock();
@@ -783,7 +783,7 @@ size_t fossil_bluecrab_cacheshell_evict_expired(void) {
 // Binary-Safe Operations
 // ===========================================================
 
-bool fossil_bluecrab_cacheshell_set_binary(const char *key, const void *data, size_t size) {
+bool fossil_db_cacheshell_set_binary(const char *key, const void *data, size_t size) {
     if (!key || !data || size == 0)
         return false;
 
@@ -868,7 +868,7 @@ bool fossil_bluecrab_cacheshell_set_binary(const char *key, const void *data, si
 
 // Binary fetch (returns internal pointer, do NOT modify or free).
 // Thread-safe lookup; pointer becomes invalid if the entry is later removed or updated.
-const void *fossil_bluecrab_cacheshell_get_binary(const char *key, size_t *out_size) {
+const void *fossil_db_cacheshell_get_binary(const char *key, size_t *out_size) {
     if (!key)
         return NULL;
 
@@ -891,7 +891,7 @@ const void *fossil_bluecrab_cacheshell_get_binary(const char *key, size_t *out_s
 // Cache Management
 // ===========================================================
 
-void fossil_bluecrab_cacheshell_clear(void) {
+void fossil_db_cacheshell_clear(void) {
     fossil_cache_lock();
 
     if (!g_cache.buckets) {
@@ -916,11 +916,11 @@ void fossil_bluecrab_cacheshell_clear(void) {
     fossil_cache_unlock();
 }
 
-size_t fossil_bluecrab_cacheshell_count(void) {
+size_t fossil_db_cacheshell_count(void) {
     return g_cache.entry_count;
 }
 
-size_t fossil_bluecrab_cacheshell_memory_usage(void) {
+size_t fossil_db_cacheshell_memory_usage(void) {
     fossil_cache_lock();
     size_t bytes = g_cache.total_bytes; // O(1) tracked value
     fossil_cache_unlock();
@@ -931,14 +931,14 @@ size_t fossil_bluecrab_cacheshell_memory_usage(void) {
 // Statistics / Thread Safety
 // ===========================================================
 
-void fossil_bluecrab_cacheshell_stats(size_t *out_hits, size_t *out_misses) {
+void fossil_db_cacheshell_stats(size_t *out_hits, size_t *out_misses) {
     fossil_cache_lock();
     if (out_hits)   *out_hits   = g_cache.hits;
     if (out_misses) *out_misses = g_cache.misses;
     fossil_cache_unlock();
 }
 
-void fossil_bluecrab_cacheshell_stats_extended(
+void fossil_db_cacheshell_stats_extended(
         size_t *out_hits,
         size_t *out_misses,
         size_t *out_entries,
@@ -961,7 +961,7 @@ void fossil_bluecrab_cacheshell_stats_extended(
     fossil_cache_unlock();
 }
 
-void fossil_bluecrab_cacheshell_threadsafe(bool enabled) {
+void fossil_db_cacheshell_threadsafe(bool enabled) {
     g_cache.locking_enabled = enabled;
 }
 
@@ -969,7 +969,7 @@ void fossil_bluecrab_cacheshell_threadsafe(bool enabled) {
 // Iteration
 // ===========================================================
 
-void fossil_bluecrab_cacheshell_iterate(fossil_bluecrab_cache_iter_cb cb, void *user_data) {
+void fossil_db_cacheshell_iterate(fossil_db_cache_iter_cb cb, void *user_data) {
     if (!cb) return;
 
     fossil_cache_lock();
@@ -1023,7 +1023,7 @@ void fossil_bluecrab_cacheshell_iterate(fossil_bluecrab_cache_iter_cb cb, void *
 // Persistence (Optional)
 // ===========================================================
 
-bool fossil_bluecrab_cacheshell_save(const char *path) {
+bool fossil_db_cacheshell_save(const char *path) {
     fossil_cache_lock();
 
     if (!g_cache.buckets) {
@@ -1082,13 +1082,13 @@ bool fossil_bluecrab_cacheshell_save(const char *path) {
     return ok;
 }
 
-bool fossil_bluecrab_cacheshell_load(const char *path) {
+bool fossil_db_cacheshell_load(const char *path) {
     FILE *file = fopen(path, "rb");
     if (!file)
         return false;
 
     // Use public clear (it manages its own locking)
-    fossil_bluecrab_cacheshell_clear();
+    fossil_db_cacheshell_clear();
 
     bool ok = true;
 
@@ -1126,7 +1126,7 @@ bool fossil_bluecrab_cacheshell_load(const char *path) {
         }
 
         // Insert (public API handles locking / accounting)
-        if (!fossil_bluecrab_cacheshell_set_binary(key, data ? data : "", size)) {
+        if (!fossil_db_cacheshell_set_binary(key, data ? data : "", size)) {
             free(data);
             ok = false;
             break;

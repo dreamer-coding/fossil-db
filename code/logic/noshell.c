@@ -25,7 +25,7 @@
 #include "fossil/crabdb/noshell.h"
 
 /**
- * @brief Implements the core logic for the Fossil BlueCrab .noshell file database.
+ * @brief Implements the core logic for the Fossil db .noshell file database.
  *
  * This file provides functions for managing a simple versioned key-value store
  * using the ".noshell" file format. It supports operations such as open, create,
@@ -102,26 +102,26 @@
  *
  * ## Main Functions
  * - `noshell_hash64`: Computes a 64-bit hash for strings (MurmurHash3 variant).
- * - `fossil_bluecrab_noshell_open_database`: Opens an existing .noshell database file.
- * - `fossil_bluecrab_noshell_create_database`: Creates a new .noshell database file.
- * - `fossil_bluecrab_noshell_delete_database`: Deletes a database file.
- * - `fossil_bluecrab_noshell_insert`: Inserts a document.
- * - `fossil_bluecrab_noshell_insert_with_id`: Inserts a document and returns its ID.
- * - `fossil_bluecrab_noshell_find`: Finds a document by query.
- * - `fossil_bluecrab_noshell_update`: Updates a document.
- * - `fossil_bluecrab_noshell_remove`: Removes a document.
- * - `fossil_bluecrab_noshell_backup_database`: Creates a backup of the database.
- * - `fossil_bluecrab_noshell_restore_database`: Restores a database from backup.
- * - `fossil_bluecrab_noshell_verify_database`: Verifies file and document integrity.
- * - `fossil_bluecrab_noshell_first_document`: Gets the first document ID.
- * - `fossil_bluecrab_noshell_next_document`: Gets the next document ID.
- * - `fossil_bluecrab_noshell_count_documents`: Counts the number of documents.
- * - `fossil_bluecrab_noshell_get_file_size`: Gets the database file size.
- * - `fossil_bluecrab_noshell_validate_extension`: Validates file extension.
- * - `fossil_bluecrab_noshell_validate_document`: Validates document format.
+ * - `fossil_db_noshell_open_database`: Opens an existing .noshell database file.
+ * - `fossil_db_noshell_create_database`: Creates a new .noshell database file.
+ * - `fossil_db_noshell_delete_database`: Deletes a database file.
+ * - `fossil_db_noshell_insert`: Inserts a document.
+ * - `fossil_db_noshell_insert_with_id`: Inserts a document and returns its ID.
+ * - `fossil_db_noshell_find`: Finds a document by query.
+ * - `fossil_db_noshell_update`: Updates a document.
+ * - `fossil_db_noshell_remove`: Removes a document.
+ * - `fossil_db_noshell_backup_database`: Creates a backup of the database.
+ * - `fossil_db_noshell_restore_database`: Restores a database from backup.
+ * - `fossil_db_noshell_verify_database`: Verifies file and document integrity.
+ * - `fossil_db_noshell_first_document`: Gets the first document ID.
+ * - `fossil_db_noshell_next_document`: Gets the next document ID.
+ * - `fossil_db_noshell_count_documents`: Counts the number of documents.
+ * - `fossil_db_noshell_get_file_size`: Gets the database file size.
+ * - `fossil_db_noshell_validate_extension`: Validates file extension.
+ * - `fossil_db_noshell_validate_document`: Validates document format.
  *
  * ## Error Handling
- * All functions return a `fossil_bluecrab_noshell_error_t` code indicating success or the type of error.
+ * All functions return a `fossil_db_noshell_error_t` code indicating success or the type of error.
  *
  * ## Usage Notes
  * - Only files with the ".noshell" extension are supported.
@@ -217,7 +217,7 @@ uint64_t noshell_hash64(const char *str) {
 // Document CRUD Operations
 // ===========================================================
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert(
+fossil_db_noshell_error_t fossil_db_noshell_insert(
     const char *file_name,
     const char *document,
     const char *param_list,
@@ -226,7 +226,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert(
     if (!file_name || !document || !type)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     // Check that type is valid (must match one of noshell_fson_type_names)
@@ -264,7 +264,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert(
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert_with_id(
+fossil_db_noshell_error_t fossil_db_noshell_insert_with_id(
     const char *file_name,
     const char *document,
     const char *param_list,
@@ -275,7 +275,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert_with_id(
     if (!file_name || !document || !type || !out_id || id_size < 17)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     // Check that type is valid (must match one of noshell_fson_type_names)
@@ -314,7 +314,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_insert_with_id(
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find(
+fossil_db_noshell_error_t fossil_db_noshell_find(
     const char *file_name,
     const char *query,
     char *result,
@@ -324,7 +324,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find(
     if (!file_name || !query || !result || buffer_size == 0)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     // If type_id is provided, check it is valid using noshell_fson_type_names
@@ -372,7 +372,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find(
     return FOSSIL_NOSHELL_ERROR_NOT_FOUND;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find_cb(
+fossil_db_noshell_error_t fossil_db_noshell_find_cb(
     const char *file_name,
     bool (*cb)(const char *document, void *userdata),
     void *userdata
@@ -380,7 +380,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find_cb(
     if (!file_name || !cb)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "r");
@@ -388,7 +388,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find_cb(
         return FOSSIL_NOSHELL_ERROR_IO;
 
     char line[1024];
-    fossil_bluecrab_noshell_error_t result = FOSSIL_NOSHELL_ERROR_NOT_FOUND;
+    fossil_db_noshell_error_t result = FOSSIL_NOSHELL_ERROR_NOT_FOUND;
     while (fgets(line, sizeof(line), fp)) {
         // Only consider FSON-formatted lines (start with '{' or '[' after whitespace)
         char *p = line;
@@ -405,7 +405,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_find_cb(
     return result;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_update(
+fossil_db_noshell_error_t fossil_db_noshell_update(
     const char *file_name,
     const char *query,
     const char *new_document,
@@ -415,7 +415,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_update(
     if (!file_name || !query || !new_document)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     // If type_id is provided, check it is valid using noshell_fson_type_names
@@ -531,11 +531,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_update(
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_remove(const char *file_name, const char *query) {
+fossil_db_noshell_error_t fossil_db_noshell_remove(const char *file_name, const char *query) {
     if (!file_name || !query)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "r");
@@ -593,11 +593,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_remove(const char *file_
 // Database Management
 // ===========================================================
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_create_database(const char *file_name) {
+fossil_db_noshell_error_t fossil_db_noshell_create_database(const char *file_name) {
     if (!file_name)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "w");
@@ -613,11 +613,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_create_database(const ch
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_open_database(const char *file_name) {
+fossil_db_noshell_error_t fossil_db_noshell_open_database(const char *file_name) {
     if (!file_name)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "r");
@@ -656,11 +656,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_open_database(const char
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_delete_database(const char *file_name) {
+fossil_db_noshell_error_t fossil_db_noshell_delete_database(const char *file_name) {
     if (!file_name)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     // Optionally check for FSON header before deletion
@@ -680,11 +680,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_delete_database(const ch
         return FOSSIL_NOSHELL_ERROR_IO;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_lock_database(const char *file_name) {
+fossil_db_noshell_error_t fossil_db_noshell_lock_database(const char *file_name) {
     if (!file_name)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     // Create a lock file: file_name + ".lock"
@@ -701,11 +701,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_lock_database(const char
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_unlock_database(const char *file_name) {
+fossil_db_noshell_error_t fossil_db_noshell_unlock_database(const char *file_name) {
     if (!file_name)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     char lock_file[1024];
@@ -718,11 +718,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_unlock_database(const ch
         return FOSSIL_NOSHELL_ERROR_LOCK_FAILED;
 }
 
-bool fossil_bluecrab_noshell_is_locked(const char *file_name) {
+bool fossil_db_noshell_is_locked(const char *file_name) {
     if (!file_name)
         return false;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return false;
 
     char lock_file[1024];
@@ -740,12 +740,12 @@ bool fossil_bluecrab_noshell_is_locked(const char *file_name) {
 // Backup, Restore, and Verification
 // ===========================================================
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_backup_database(const char *source_file, const char *backup_file) {
+fossil_db_noshell_error_t fossil_db_noshell_backup_database(const char *source_file, const char *backup_file) {
     if (!source_file || !backup_file)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(source_file) ||
-        !fossil_bluecrab_noshell_validate_extension(backup_file))
+    if (!fossil_db_noshell_validate_extension(source_file) ||
+        !fossil_db_noshell_validate_extension(backup_file))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *src = fopen(source_file, "r");
@@ -777,12 +777,12 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_backup_database(const ch
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_restore_database(const char *backup_file, const char *destination_file) {
+fossil_db_noshell_error_t fossil_db_noshell_restore_database(const char *backup_file, const char *destination_file) {
     if (!backup_file || !destination_file)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(backup_file) ||
-        !fossil_bluecrab_noshell_validate_extension(destination_file))
+    if (!fossil_db_noshell_validate_extension(backup_file) ||
+        !fossil_db_noshell_validate_extension(destination_file))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *src = fopen(backup_file, "r");
@@ -814,11 +814,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_restore_database(const c
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_verify_database(const char *file_name) {
+fossil_db_noshell_error_t fossil_db_noshell_verify_database(const char *file_name) {
     if (!file_name)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "r");
@@ -872,11 +872,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_verify_database(const ch
 // Iteration Helpers
 // ===========================================================
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_first_document(const char *file_name, char *id_buffer, size_t buffer_size) {
+fossil_db_noshell_error_t fossil_db_noshell_first_document(const char *file_name, char *id_buffer, size_t buffer_size) {
     if (!file_name || !id_buffer || buffer_size < 17)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "r");
@@ -905,7 +905,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_first_document(const cha
     return FOSSIL_NOSHELL_ERROR_NOT_FOUND;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_next_document(
+fossil_db_noshell_error_t fossil_db_noshell_next_document(
     const char *file_name,
     const char *prev_id,
     char *id_buffer,
@@ -914,7 +914,7 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_next_document(
     if (!file_name || !prev_id || !id_buffer || buffer_size < 17)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "r");
@@ -956,11 +956,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_next_document(
 // Metadata Helpers
 // ===========================================================
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_count_documents(const char *file_name, size_t *count) {
+fossil_db_noshell_error_t fossil_db_noshell_count_documents(const char *file_name, size_t *count) {
     if (!file_name || !count)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "r");
@@ -985,11 +985,11 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_count_documents(const ch
     return FOSSIL_NOSHELL_ERROR_SUCCESS;
 }
 
-fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_get_file_size(const char *file_name, size_t *size_bytes) {
+fossil_db_noshell_error_t fossil_db_noshell_get_file_size(const char *file_name, size_t *size_bytes) {
     if (!file_name || !size_bytes)
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
-    if (!fossil_bluecrab_noshell_validate_extension(file_name))
+    if (!fossil_db_noshell_validate_extension(file_name))
         return FOSSIL_NOSHELL_ERROR_INVALID_FILE;
 
     FILE *fp = fopen(file_name, "rb");
@@ -1022,13 +1022,13 @@ fossil_bluecrab_noshell_error_t fossil_bluecrab_noshell_get_file_size(const char
 // Validation Helpers
 // ===========================================================
 
-bool fossil_bluecrab_noshell_validate_extension(const char *file_name) {
+bool fossil_db_noshell_validate_extension(const char *file_name) {
     if (!file_name) return false;
     const char *ext = strrchr(file_name, '.');
     return (ext && strcmp(ext, ".noshell") == 0);
 }
 
-bool fossil_bluecrab_noshell_validate_document(const char *document) {
+bool fossil_db_noshell_validate_document(const char *document) {
     if (!document) return false;
     // Skip leading whitespace
     while (isspace((unsigned char)*document)) document++;
