@@ -308,7 +308,7 @@ int fossil_db_bluecrab_compact(
 
 int fossil_db_bluecrab_verify(
     fossil_bluecrab_db *db
-)
+);
 
 #ifdef __cplusplus
 }
