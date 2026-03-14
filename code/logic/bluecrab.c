@@ -22,7 +22,7 @@
  * Copyright (C) 2014-2025 Fossil Logic. All rights reserved.
  * -----------------------------------------------------------------------------
  */
-#include "fossil/db/bluecrab.h"
+#include "fossil/crabdb/bluecrab.h"
 
 #include <stdio.h>
 #include <stdlib.h>
