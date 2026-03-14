@@ -22,8 +22,8 @@
  * Copyright (C) 2014-2025 Fossil Logic. All rights reserved.
  * -----------------------------------------------------------------------------
  */
-#ifndef FOSSIL_CRABDB_NOSHELL_H
-#define FOSSIL_CRABDB_NOSHELL_H
+#ifndef FOSSIL_DB_BLUECRAB_H
+#define FOSSIL_DB_BLUECRAB_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -62,10 +62,16 @@ Core Types
 */
 
 typedef struct fossil_bluecrab_db {
-    char name[128];
+    char name[FOSSIL_BLUECRAB_MAX_ID];
     char root_path[FOSSIL_BLUECRAB_PATH];
     char meta_path[FOSSIL_BLUECRAB_PATH];
     bool opened;
+    size_t entry_count;
+    size_t relation_count;
+    uint64_t last_commit_version;
+    char last_commit_hash[FOSSIL_BLUECRAB_HASH_SIZE];
+    char last_error[256];
+    void *internal_data;
 } fossil_bluecrab_db;
 
 typedef struct fossil_bluecrab_entry {
@@ -73,17 +79,29 @@ typedef struct fossil_bluecrab_entry {
     char parent_id[FOSSIL_BLUECRAB_MAX_ID];
     char hash[FOSSIL_BLUECRAB_HASH_SIZE];
     uint64_t version;
+    char created_at[32];
+    char updated_at[32];
+    size_t data_size;
+    char *fson_data;
+    bool deleted;
+    uint32_t flags;
 } fossil_bluecrab_entry;
 
 typedef struct fossil_bluecrab_relation {
     char source_id[FOSSIL_BLUECRAB_MAX_ID];
     char target_id[FOSSIL_BLUECRAB_MAX_ID];
-    char relation_type[64];
+    char relation_type[FOSSIL_BLUECRAB_MAX_ID];
+    uint64_t created_version;
+    char created_at[32];
+    char metadata[128];
 } fossil_bluecrab_relation;
 
 typedef struct fossil_bluecrab_search_result {
     char id[FOSSIL_BLUECRAB_MAX_ID];
     float score;
+    char matched_field[FOSSIL_BLUECRAB_MAX_ID];
+    char snippet[128];
+    uint64_t version;
 } fossil_bluecrab_search_result;
 
 
