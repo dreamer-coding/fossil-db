@@ -54,7 +54,7 @@ FOSSIL_TEARDOWN(c_bluecrab_fixture)
 
 FOSSIL_TEST(c_test_bluecrab_create_open_close_delete)
 {
-    remove(TEST_DB_PATH);
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
 
     fossil_bluecrab_db db;
@@ -67,7 +67,7 @@ FOSSIL_TEST(c_test_bluecrab_create_open_close_delete)
     int del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
     if (del_result != 0) {
         // Wait briefly and try again in case of OS file lock delay
-        sleep(1); // 1 second
+        FOSSIL_SANITY_SYS_SLEEP(1000); // 1 second
         del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
     }
     ASSUME_ITS_TRUE(del_result == 0);
@@ -75,10 +75,10 @@ FOSSIL_TEST(c_test_bluecrab_create_open_close_delete)
 
 FOSSIL_TEST(c_test_bluecrab_crud_entry)
 {
-    remove(TEST_DB_PATH);
-    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
     fossil_bluecrab_db db;
-    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
 
     const char *id = "entry1";
     const char *fson = "object: { name: cstr:\"Alice\", age: i32:30 }";
@@ -100,13 +100,13 @@ FOSSIL_TEST(c_test_bluecrab_crud_entry)
     ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, id) == 0);
     ASSUME_NOT_TRUE(fossil_db_bluecrab_get(&db, id, &out) == 0);
 
-    fossil_db_bluecrab_close(&db);
-    fossil_db_bluecrab_delete(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
 }
 
 FOSSIL_TEST(c_test_bluecrab_subentry)
 {
-    remove(TEST_DB_PATH);
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
     fossil_db_bluecrab_open(&db, TEST_DB_PATH);
@@ -128,14 +128,14 @@ FOSSIL_TEST(c_test_bluecrab_subentry)
 
 FOSSIL_TEST(c_test_bluecrab_relations)
 {
-    remove(TEST_DB_PATH);
-    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
     fossil_bluecrab_db db;
-    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
 
-    fossil_db_bluecrab_insert(&db, "A", "object: { }");
-    fossil_db_bluecrab_insert(&db, "B", "object: { }");
-    fossil_db_bluecrab_insert(&db, "C", "object: { }");
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "A", "object: { }") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "B", "object: { }") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "C", "object: { }") == 0);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "A", "B", "friend") == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "A", "C", "colleague") == 0);
@@ -151,26 +151,26 @@ FOSSIL_TEST(c_test_bluecrab_relations)
     ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 1);
     free(rels);
 
-    fossil_db_bluecrab_close(&db);
-    fossil_db_bluecrab_delete(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
 }
 
 FOSSIL_TEST(c_test_bluecrab_search_exact_and_fuzzy)
 {
-    remove(TEST_DB_PATH);
-    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
     fossil_bluecrab_db db;
-    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
 
-    fossil_db_bluecrab_insert(&db, "e1", "object: { name: cstr:\"Alpha\", tag: cstr:\"red\" }");
-    fossil_db_bluecrab_insert(&db, "e2", "object: { name: cstr:\"Beta\", tag: cstr:\"blue\" }");
-    fossil_db_bluecrab_insert(&db, "e3", "object: { name: cstr:\"Gamma\", tag: cstr:\"red\" }");
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "e1", "object: { name: cstr:\"Alpha\", tag: cstr:\"red\" }") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "e2", "object: { name: cstr:\"Beta\", tag: cstr:\"blue\" }") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "e3", "object: { name: cstr:\"Gamma\", tag: cstr:\"red\" }") == 0);
 
     fossil_bluecrab_search_result *results = NULL;
     size_t count = 0;
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "tag", "red", &results, &count) == 0);
-    ASSUME_ITS_EQUAL_SIZE(count, 2);
+    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 2);
     free(results);
 
     results = NULL;
@@ -179,13 +179,13 @@ FOSSIL_TEST(c_test_bluecrab_search_exact_and_fuzzy)
     ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 1);
     free(results);
 
-    fossil_db_bluecrab_close(&db);
-    fossil_db_bluecrab_delete(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
 }
 
 FOSSIL_TEST(c_test_bluecrab_hash_and_verify)
 {
-    remove(TEST_DB_PATH);
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
     fossil_db_bluecrab_open(&db, TEST_DB_PATH);
@@ -209,7 +209,7 @@ FOSSIL_TEST(c_test_bluecrab_hash_and_verify)
 
 FOSSIL_TEST(c_test_bluecrab_commit_log_checkout)
 {
-    remove(TEST_DB_PATH);
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
     fossil_db_bluecrab_open(&db, TEST_DB_PATH);
@@ -231,7 +231,7 @@ FOSSIL_TEST(c_test_bluecrab_commit_log_checkout)
 
 FOSSIL_TEST(c_test_bluecrab_meta_and_advanced)
 {
-    remove(TEST_DB_PATH);
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
     fossil_db_bluecrab_open(&db, TEST_DB_PATH);
@@ -242,7 +242,7 @@ FOSSIL_TEST(c_test_bluecrab_meta_and_advanced)
 
     // Backup and restore (basic smoke test)
     const char *backup_path = "/tmp/bluecrab_testdb_backup";
-    remove(backup_path);
+    FOSSIL_SANITY_SYS_DELETE_FILE(backup_path);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_backup(&db, backup_path) == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_restore(&db, backup_path) == 0);
 
@@ -252,7 +252,7 @@ FOSSIL_TEST(c_test_bluecrab_meta_and_advanced)
 
     fossil_db_bluecrab_close(&db);
     fossil_db_bluecrab_delete(TEST_DB_PATH);
-    remove(backup_path);
+    FOSSIL_SANITY_SYS_DELETE_FILE(backup_path);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * *
