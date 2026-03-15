@@ -67,7 +67,7 @@ FOSSIL_TEST(c_test_bluecrab_create_open_close_delete)
     int del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
     if (del_result != 0) {
         // Wait briefly and try again in case of OS file lock delay
-        usleep(100000); // 100 ms
+        sleep(1); // 1 second
         del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
     }
     ASSUME_ITS_TRUE(del_result == 0);
