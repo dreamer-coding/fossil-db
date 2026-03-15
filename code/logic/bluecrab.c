@@ -636,7 +636,7 @@ int fossil_db_bluecrab_meta_save(fossil_bluecrab_db *db)
 int fossil_db_bluecrab_meta_rebuild(fossil_bluecrab_db *db)
 {
     char objdir[FOSSIL_BLUECRAB_PATH];
-    bc_join(objdir, db->root_path, "objects");
+    bc_join(objdir, sizeof(objdir), db->root_path, "objects");
 
     DIR *d = opendir(objdir);
     if (!d)
