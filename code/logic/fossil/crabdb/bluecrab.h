@@ -534,84 +534,46 @@ namespace fossil::db
         ------------------------------------------------------------
         */
 
-        /**
-         * @brief Default constructor for BlueCrab. Does not open a database.
-         *        The database must be opened explicitly using open().
-         */
         BlueCrab() = default;
 
-        /**
-         * @brief Constructor that opens a BlueCrab database at the given path.
-         *        If the database cannot be opened, throws a std::runtime_error.
-         * @param path Filesystem path to the database.
-         * @throws std::runtime_error if opening fails.
-         */
         BlueCrab(const std::string &path)
         {
             open(path);
         }
 
-        /**
-         * @brief Destructor. Closes the database if it is open.
-         *        Ensures all resources are released and the database is properly closed.
-         */
         ~BlueCrab()
         {
             if (opened)
                 close();
         }
 
-        /*
-        ------------------------------------------------------------
-        Static Database Creation
-        ------------------------------------------------------------
-        */
-
-        /**
-         * @brief Create a new BlueCrab database at the specified path and name.
-         *        This is a static method and does not require an instance.
-         *        Throws an exception if creation fails.
-         * @param path Filesystem path for the new database.
-         * @param name Name of the database.
-         * @throws std::runtime_error if creation fails.
-         */
-        static void create(
-            const std::string &path,
-            const std::string &name)
+        static void create(const std::string &path, const std::string &name)
         {
             if (fossil_db_bluecrab_create(path.c_str(), name.c_str()) != 0)
                 throw std::runtime_error("bluecrab create failed");
         }
 
-        /*
-        ------------------------------------------------------------
-        Open / Close
-        ------------------------------------------------------------
-        */
+        static void remove_db(const std::string &path)
+        {
+            if (fossil_db_bluecrab_delete(path.c_str()) != 0)
+                throw std::runtime_error("bluecrab delete failed");
+        }
 
-        /**
-         * @brief Open an existing BlueCrab database at the given path.
-         *        Initializes the internal database structure and marks it as opened.
-         *        Throws an exception if opening fails.
-         * @param path Filesystem path to the database.
-         * @throws std::runtime_error if opening fails.
-         */
         void open(const std::string &path)
         {
             if (fossil_db_bluecrab_open(&db, path.c_str()) != 0)
                 throw std::runtime_error("bluecrab open failed");
-
             opened = true;
         }
 
-        /**
-         * @brief Close the currently open BlueCrab database.
-         *        Releases all associated resources and marks the database as closed.
-         */
         void close()
         {
-            fossil_db_bluecrab_close(&db);
-            opened = false;
+            if (opened)
+            {
+                if (fossil_db_bluecrab_close(&db) != 0)
+                    throw std::runtime_error("bluecrab close failed");
+                opened = false;
+            }
         }
 
         /*
@@ -620,66 +582,28 @@ namespace fossil::db
         ------------------------------------------------------------
         */
 
-        /**
-         * @brief Insert a new entry into the database.
-         *        Adds a new record with the specified ID and FSON data.
-         *        Throws an exception if insertion fails.
-         * @param id Unique identifier for the entry.
-         * @param fson FSON-encoded data for the entry.
-         * @throws std::runtime_error if insertion fails.
-         */
-        void insert(
-            const std::string &id,
-            const std::string &fson)
+        void insert(const std::string &id, const std::string &fson)
         {
             if (fossil_db_bluecrab_insert(&db, id.c_str(), fson.c_str()) != 0)
                 throw std::runtime_error("insert failed");
         }
 
-        /**
-         * @brief Retrieve an entry's FSON data by its ID.
-         *        Allocates and returns the FSON data as a std::string.
-         *        Throws an exception if retrieval fails.
-         * @param id Unique identifier for the entry.
-         * @return FSON-encoded data as a std::string.
-         * @throws std::runtime_error if retrieval fails.
-         */
         std::string get(const std::string &id)
         {
             char *result = nullptr;
-
             if (fossil_db_bluecrab_get(&db, id.c_str(), &result) != 0)
                 throw std::runtime_error("get failed");
-
             std::string out = result;
             free(result);
-
             return out;
         }
 
-        /**
-         * @brief Update an existing entry's data.
-         *        Replaces the FSON data for the specified entry ID.
-         *        Throws an exception if update fails.
-         * @param id Unique identifier for the entry.
-         * @param fson New FSON-encoded data for the entry.
-         * @throws std::runtime_error if update fails.
-         */
-        void update(
-            const std::string &id,
-            const std::string &fson)
+        void update(const std::string &id, const std::string &fson)
         {
             if (fossil_db_bluecrab_update(&db, id.c_str(), fson.c_str()) != 0)
                 throw std::runtime_error("update failed");
         }
 
-        /**
-         * @brief Remove (delete) an entry from the database by its ID.
-         *        Marks the entry as deleted or removes it from storage.
-         *        Throws an exception if removal fails.
-         * @param id Unique identifier for the entry.
-         * @throws std::runtime_error if removal fails.
-         */
         void remove(const std::string &id)
         {
             if (fossil_db_bluecrab_remove(&db, id.c_str()) != 0)
@@ -692,57 +616,19 @@ namespace fossil::db
         ------------------------------------------------------------
         */
 
-        /**
-         * @brief Insert a sub-entry under a parent entry.
-         *        Adds a new sub-record associated with the specified parent.
-         *        Throws an exception if insertion fails.
-         * @param parent ID of the parent entry.
-         * @param sub_id Unique identifier for the sub-entry.
-         * @param fson FSON-encoded data for the sub-entry.
-         * @throws std::runtime_error if insertion fails.
-         */
-        void insert_sub(
-            const std::string &parent,
-            const std::string &sub_id,
-            const std::string &fson)
+        void insert_sub(const std::string &parent, const std::string &sub_id, const std::string &fson)
         {
-            if (fossil_db_bluecrab_insert_sub(
-                    &db,
-                    parent.c_str(),
-                    sub_id.c_str(),
-                    fson.c_str()) != 0)
-            {
+            if (fossil_db_bluecrab_insert_sub(&db, parent.c_str(), sub_id.c_str(), fson.c_str()) != 0)
                 throw std::runtime_error("insert_sub failed");
-            }
         }
 
-        /**
-         * @brief Retrieve a sub-entry's FSON data by parent and sub-entry ID.
-         *        Returns the FSON data as a std::string.
-         *        Throws an exception if retrieval fails.
-         * @param parent ID of the parent entry.
-         * @param sub_id Unique identifier for the sub-entry.
-         * @return FSON-encoded data as a std::string.
-         * @throws std::runtime_error if retrieval fails.
-         */
-        std::string get_sub(
-            const std::string &parent,
-            const std::string &sub_id)
+        std::string get_sub(const std::string &parent, const std::string &sub_id)
         {
             char *result = nullptr;
-
-            if (fossil_db_bluecrab_get_sub(
-                    &db,
-                    parent.c_str(),
-                    sub_id.c_str(),
-                    &result) != 0)
-            {
+            if (fossil_db_bluecrab_get_sub(&db, parent.c_str(), sub_id.c_str(), &result) != 0)
                 throw std::runtime_error("get_sub failed");
-            }
-
             std::string out = result;
             free(result);
-
             return out;
         }
 
@@ -752,49 +638,27 @@ namespace fossil::db
         ------------------------------------------------------------
         */
 
-        /**
-         * @brief Create a relationship (edge) between two entries.
-         *        Establishes a directed relationship in the database's DAG.
-         *        Throws an exception if linking fails.
-         * @param source ID of the source entry.
-         * @param target ID of the target entry.
-         * @param relation Type or name of the relationship.
-         * @throws std::runtime_error if linking fails.
-         */
-        void link(
-            const std::string &source,
-            const std::string &target,
-            const std::string &relation)
+        void link(const std::string &source, const std::string &target, const std::string &relation)
         {
-            if (fossil_db_bluecrab_link(
-                    &db,
-                    source.c_str(),
-                    target.c_str(),
-                    relation.c_str()) != 0)
-            {
+            if (fossil_db_bluecrab_link(&db, source.c_str(), target.c_str(), relation.c_str()) != 0)
                 throw std::runtime_error("link failed");
-            }
         }
 
-        /**
-         * @brief Remove a relationship (edge) between two entries.
-         *        Deletes the specified relationship from the database's DAG.
-         *        Throws an exception if unlinking fails.
-         * @param source ID of the source entry.
-         * @param target ID of the target entry.
-         * @throws std::runtime_error if unlinking fails.
-         */
-        void unlink(
-            const std::string &source,
-            const std::string &target)
+        void unlink(const std::string &source, const std::string &target)
         {
-            if (fossil_db_bluecrab_unlink(
-                    &db,
-                    source.c_str(),
-                    target.c_str()) != 0)
-            {
+            if (fossil_db_bluecrab_unlink(&db, source.c_str(), target.c_str()) != 0)
                 throw std::runtime_error("unlink failed");
-            }
+        }
+
+        std::vector<fossil_bluecrab_relation> get_relations(const std::string &id)
+        {
+            fossil_bluecrab_relation *relations = nullptr;
+            size_t count = 0;
+            if (fossil_db_bluecrab_get_relations(&db, id.c_str(), &relations, &count) != 0)
+                throw std::runtime_error("get_relations failed");
+            std::vector<fossil_bluecrab_relation> vec(relations, relations + count);
+            free(relations);
+            return vec;
         }
 
         /*
@@ -803,92 +667,62 @@ namespace fossil::db
         ------------------------------------------------------------
         */
 
-        /**
-         * @brief Perform an exact match search on a field and value.
-         *        Returns a vector of search results matching the criteria.
-         * @param field Field name to search.
-         * @param value Value to match exactly.
-         * @return Vector of search results.
-         */
-        std::vector<fossil_bluecrab_search_result> search_exact(
-            const std::string &field,
-            const std::string &value)
+        std::vector<fossil_bluecrab_search_result> search_exact(const std::string &field, const std::string &value)
         {
             fossil_bluecrab_search_result *results = nullptr;
             size_t count = 0;
-
-            fossil_db_bluecrab_search_exact(
-                &db,
-                field.c_str(),
-                value.c_str(),
-                &results,
-                &count);
-
-            std::vector<fossil_bluecrab_search_result> vec;
-
-            for (size_t i = 0; i < count; ++i)
-                vec.push_back(results[i]);
-
+            if (fossil_db_bluecrab_search_exact(&db, field.c_str(), value.c_str(), &results, &count) != 0)
+                throw std::runtime_error("search_exact failed");
+            std::vector<fossil_bluecrab_search_result> vec(results, results + count);
             free(results);
-
             return vec;
         }
 
-        /**
-         * @brief Perform a fuzzy search using a query string.
-         *        Returns a vector of search results ranked by similarity.
-         * @param query Query string for fuzzy matching.
-         * @return Vector of search results.
-         */
-        std::vector<fossil_bluecrab_search_result> search_fuzzy(
-            const std::string &query)
+        std::vector<fossil_bluecrab_search_result> search_fuzzy(const std::string &query)
         {
             fossil_bluecrab_search_result *results = nullptr;
             size_t count = 0;
-
-            fossil_db_bluecrab_search_fuzzy(
-                &db,
-                query.c_str(),
-                &results,
-                &count);
-
-            std::vector<fossil_bluecrab_search_result> vec;
-
-            for (size_t i = 0; i < count; ++i)
-                vec.push_back(results[i]);
-
+            if (fossil_db_bluecrab_search_fuzzy(&db, query.c_str(), &results, &count) != 0)
+                throw std::runtime_error("search_fuzzy failed");
+            std::vector<fossil_bluecrab_search_result> vec(results, results + count);
             free(results);
-
             return vec;
         }
 
         /*
         ------------------------------------------------------------
-        Hash
+        AI Smart Search Helpers
         ------------------------------------------------------------
         */
 
-        /**
-         * @brief Compute the hash for a given entry's data.
-         *        Uses the database's hashing algorithm to produce a hash string.
-         * @param data FSON-encoded data to hash.
-         * @return Hash as a std::string.
-         */
+        static float similarity(const std::string &a, const std::string &b)
+        {
+            return fossil_db_bluecrab_similarity(a.c_str(), b.c_str());
+        }
+
+        static void rank_results(std::vector<fossil_bluecrab_search_result> &results)
+        {
+            if (!results.empty())
+            {
+                if (fossil_db_bluecrab_rank_results(results.data(), results.size()) != 0)
+                    throw std::runtime_error("rank_results failed");
+            }
+        }
+
+        /*
+        ------------------------------------------------------------
+        Hash + Integrity
+        ------------------------------------------------------------
+        */
+
         std::string hash_entry(const std::string &data)
         {
-            char hash[FOSSIL_BLUECRAB_HASH_SIZE];
-
-            fossil_db_bluecrab_hash_entry(data.c_str(), hash);
-
+            char hash[FOSSIL_BLUECRAB_HASH_SIZE] = {};
+            if (fossil_db_bluecrab_hash_entry(data.c_str(), hash) != 0)
+                throw std::runtime_error("hash_entry failed");
             return std::string(hash);
         }
 
-        /**
-         * @brief Verify the integrity of an entry by its ID.
-         *        Checks if the entry's data matches its stored hash.
-         * @param id Unique identifier for the entry.
-         * @return True if the entry is valid, false otherwise.
-         */
         bool verify_entry(const std::string &id)
         {
             return fossil_db_bluecrab_verify_entry(&db, id.c_str()) == 0;
@@ -900,80 +734,76 @@ namespace fossil::db
         ------------------------------------------------------------
         */
 
-        /**
-         * @brief Commit the current state of the database with a message.
-         *        Records a new version in the database's commit history.
-         *        Throws an exception if commit fails.
-         * @param message Commit message describing the changes.
-         * @throws std::runtime_error if commit fails.
-         */
         void commit(const std::string &message)
         {
             if (fossil_db_bluecrab_commit(&db, message.c_str()) != 0)
                 throw std::runtime_error("commit failed");
         }
 
-        /**
-         * @brief Print the commit log/history of the database.
-         *        Outputs the commit history to standard output.
-         */
         void log()
         {
-            fossil_db_bluecrab_log(&db);
+            if (fossil_db_bluecrab_log(&db) != 0)
+                throw std::runtime_error("log failed");
         }
 
-        /**
-         * @brief Checkout a specific version of the database.
-         *        Restores the database to the specified version.
-         * @param version Version identifier to checkout.
-         */
         void checkout(const std::string &version)
         {
-            fossil_db_bluecrab_checkout(&db, version.c_str());
+            if (fossil_db_bluecrab_checkout(&db, version.c_str()) != 0)
+                throw std::runtime_error("checkout failed");
         }
 
         /*
         ------------------------------------------------------------
-        Maintenance
+        Meta Tree Operations
         ------------------------------------------------------------
         */
 
-        /**
-         * @brief Compact the database to reclaim space and optimize storage.
-         *        May reduce disk usage and improve performance.
-         */
-        void compact()
+        void meta_load()
         {
-            fossil_db_bluecrab_compact(&db);
+            if (fossil_db_bluecrab_meta_load(&db) != 0)
+                throw std::runtime_error("meta_load failed");
         }
 
-        /**
-         * @brief Verify the integrity of the entire database.
-         *        Checks all entries and relationships for consistency.
-         */
-        void verify()
+        void meta_save()
         {
-            fossil_db_bluecrab_verify(&db);
+            if (fossil_db_bluecrab_meta_save(&db) != 0)
+                throw std::runtime_error("meta_save failed");
         }
 
-        /**
-         * @brief Create a backup of the database at the specified path.
-         *        Saves the current state to a backup file.
-         * @param path Filesystem path for the backup file.
-         */
+        void meta_rebuild()
+        {
+            if (fossil_db_bluecrab_meta_rebuild(&db) != 0)
+                throw std::runtime_error("meta_rebuild failed");
+        }
+
+        /*
+        ------------------------------------------------------------
+        Advanced Database Operations
+        ------------------------------------------------------------
+        */
+
         void backup(const std::string &path)
         {
-            fossil_db_bluecrab_backup(&db, path.c_str());
+            if (fossil_db_bluecrab_backup(&db, path.c_str()) != 0)
+                throw std::runtime_error("backup failed");
         }
 
-        /**
-         * @brief Restore the database from a backup file.
-         *        Loads the database state from the specified backup.
-         * @param path Filesystem path to the backup file.
-         */
         void restore(const std::string &path)
         {
-            fossil_db_bluecrab_restore(&db, path.c_str());
+            if (fossil_db_bluecrab_restore(&db, path.c_str()) != 0)
+                throw std::runtime_error("restore failed");
+        }
+
+        void compact()
+        {
+            if (fossil_db_bluecrab_compact(&db) != 0)
+                throw std::runtime_error("compact failed");
+        }
+
+        void verify()
+        {
+            if (fossil_db_bluecrab_verify(&db) != 0)
+                throw std::runtime_error("verify failed");
         }
     };
 
