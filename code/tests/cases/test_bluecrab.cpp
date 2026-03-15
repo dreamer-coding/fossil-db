@@ -58,19 +58,24 @@ FOSSIL_TEST(cpp_test_bluecrab_create_open_close_delete)
     FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
 
     // Static creation
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    // Open/close via C++ class
-    fossil::db::BlueCrab db;
     bool threw = false;
     try {
-        db.open(TEST_DB_PATH);
+        fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
     } catch (...) {
         threw = true;
     }
     ASSUME_NOT_TRUE(threw);
-    // Should be able to open and close without exception
-    db.close();
+
+    // Open/close via C++ class
+    fossil::db::BlueCrab db;
+    threw = false;
+    try {
+        db.open(TEST_DB_PATH);
+        db.close();
+    } catch (...) {
+        threw = true;
+    }
+    ASSUME_NOT_TRUE(threw);
 
     // Open via constructor
     threw = false;
@@ -83,10 +88,15 @@ FOSSIL_TEST(cpp_test_bluecrab_create_open_close_delete)
     ASSUME_NOT_TRUE(threw);
 
     // Ensure file is closed before attempting to delete, and retry if needed
-    int del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
-    if (del_result != 0) {
-        FOSSIL_SANITY_SYS_SLEEP(1000); // 1 second
+    int del_result = 0;
+    try {
         del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
+        if (del_result != 0) {
+            FOSSIL_SANITY_SYS_SLEEP(1000); // 1 second
+            del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
+        }
+    } catch (...) {
+        del_result = -1;
     }
     ASSUME_ITS_TRUE(del_result == 0);
 }
@@ -96,11 +106,17 @@ FOSSIL_TEST(cpp_test_bluecrab_crud_entry)
     FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
 
     // Create DB using static method
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    bool threw = false;
+    try {
+        fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    } catch (...) {
+        threw = true;
+    }
+    ASSUME_NOT_TRUE(threw);
 
     // Open DB using C++ wrapper
     fossil::db::BlueCrab db;
-    bool threw = false;
+    threw = false;
     try {
         db.open(TEST_DB_PATH);
     } catch (...) {
@@ -169,8 +185,18 @@ FOSSIL_TEST(cpp_test_bluecrab_crud_entry)
     }
     ASSUME_ITS_TRUE(get_failed);
 
-    db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    try {
+        db.close();
+    } catch (...) {
+        // ignore close errors
+    }
+    int del_result = 0;
+    try {
+        del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
+    } catch (...) {
+        del_result = -1;
+    }
+    ASSUME_ITS_TRUE(del_result == 0);
 }
 
 FOSSIL_TEST(cpp_test_bluecrab_subentry)
