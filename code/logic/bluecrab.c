@@ -29,6 +29,9 @@
 #include <string.h>
 #include <time.h>
 #include <dirent.h>
+#ifndef DT_DIR
+#define DT_DIR 4
+#endif
 
 #ifdef _WIN32
 #include <direct.h>
@@ -220,7 +223,47 @@ int fossil_db_bluecrab_close(fossil_bluecrab_db *db)
 
 int fossil_db_bluecrab_delete(const char *path)
 {
-    return remove(path);
+    // Recursively delete all files and directories under the given path
+    DIR *dir = opendir(path);
+    if (!dir)
+        return remove(path); // Not a directory, try to remove as file
+
+    struct dirent *entry;
+    char fullpath[FOSSIL_BLUECRAB_PATH];
+
+    int ret = 0;
+
+    while ((entry = readdir(dir)) != NULL)
+    {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+            continue;
+
+        if (snprintf(fullpath, sizeof(fullpath), "%s%s%s", path, BC_PATH_SEP, entry->d_name) >= (int)sizeof(fullpath))
+        {
+            ret = -1;
+            break;
+        }
+
+        // Recursively delete subdirectories/files
+        if (entry->d_type == DT_DIR)
+        {
+            if (fossil_db_bluecrab_delete(fullpath) != 0)
+                ret = -1;
+        }
+        else
+        {
+            if (remove(fullpath) != 0)
+                ret = -1;
+        }
+    }
+
+    closedir(dir);
+
+    // Remove the directory itself
+    if (ret == 0)
+        ret = rmdir(path);
+
+    return ret;
 }
 
 /*
