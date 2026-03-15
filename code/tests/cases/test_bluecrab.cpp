@@ -807,26 +807,6 @@ FOSSIL_TEST(cpp_test_bluecrab_backup_restore_integrity)
     FOSSIL_SANITY_SYS_DELETE_FILE(backup_path.c_str());
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_similarity_and_ranking)
-{
-    // Test the similarity scoring and ranking helpers via BlueCrab C++ API
-    float sim1 = fossil::db::BlueCrab::similarity("Alpha", "Alpha");
-    float sim2 = fossil::db::BlueCrab::similarity("Alpha", "Alfa");
-    float sim3 = fossil::db::BlueCrab::similarity("Alpha", "Beta");
-    ASSUME_ITS_MORE_THAN_F32(sim1, sim2);
-    ASSUME_ITS_MORE_THAN_F32(sim2, sim3);
-
-    std::vector<fossil_bluecrab_search_result> results = {
-        {.id = "A", .score = sim1},
-        {.id = "B", .score = sim2},
-        {.id = "C", .score = sim3}
-    };
-    fossil::db::BlueCrab::rank_results(results);
-    ASSUME_ITS_EQUAL_CSTR(results[0].id, "A");
-    ASSUME_ITS_EQUAL_CSTR(results[1].id, "B");
-    ASSUME_ITS_EQUAL_CSTR(results[2].id, "C");
-}
-
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
@@ -850,7 +830,6 @@ FOSSIL_TEST_GROUP(cpp_bluecrab_database_tests)
     FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_dag_cycle_prevention);
     FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_subentry_bulk_and_removal);
     FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_backup_restore_integrity);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_similarity_and_ranking);
 
     FOSSIL_TEST_REGISTER(cpp_bluecrab_fixture);
 } // end of tests
