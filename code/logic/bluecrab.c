@@ -230,7 +230,6 @@ int fossil_db_bluecrab_delete(const char *path)
 
     struct dirent *entry;
     char fullpath[FOSSIL_BLUECRAB_PATH];
-
     int ret = 0;
 
     while ((entry = readdir(dir)) != NULL)
@@ -244,8 +243,18 @@ int fossil_db_bluecrab_delete(const char *path)
             break;
         }
 
-        // Recursively delete subdirectories/files
-        if (entry->d_type == DT_DIR)
+#ifdef _DIRENT_HAVE_D_TYPE
+        int is_dir = (entry->d_type == DT_DIR);
+#else
+        // If d_type is not available, use stat
+        struct stat st;
+        if (stat(fullpath, &st) == 0)
+            is_dir = S_ISDIR(st.st_mode);
+        else
+            is_dir = 0;
+#endif
+
+        if (is_dir)
         {
             if (fossil_db_bluecrab_delete(fullpath) != 0)
                 ret = -1;
@@ -259,9 +268,13 @@ int fossil_db_bluecrab_delete(const char *path)
 
     closedir(dir);
 
-    // Remove the directory itself
+#ifdef _WIN32
+    if (ret == 0)
+        ret = _rmdir(path);
+#else
     if (ret == 0)
         ret = rmdir(path);
+#endif
 
     return ret;
 }
