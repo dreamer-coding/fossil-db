@@ -170,13 +170,13 @@ FOSSIL_TEST(c_test_bluecrab_search_exact_and_fuzzy)
     size_t count = 0;
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "tag", "red", &results, &count) == 0);
-    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 2);
+    ASSUME_ITS_EQUAL_SIZE(count, 2);
     free(results);
 
     results = NULL;
     count = 0;
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "Alpha", &results, &count) == 0);
-    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 1);
+    ASSUME_ITS_EQUAL_SIZE(count, 1);
     free(results);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
@@ -450,7 +450,7 @@ FOSSIL_TEST(c_test_bluecrab_bulk_insert_and_fuzzy_rank)
     fossil_bluecrab_search_result *results = NULL;
     size_t count = 0;
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "User1", &results, &count) == 0);
-    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 10);
+    ASSUME_ITS_EQUAL_SIZE(count, 10);
 
     // Rank results and check that the top result is "user_10" or "user_11"
     ASSUME_ITS_TRUE(fossil_db_bluecrab_rank_results(results, count) == 0);
@@ -479,7 +479,7 @@ FOSSIL_TEST(c_test_bluecrab_dag_cycle_prevention)
     ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "B", "C", "edge") == 0);
 
     // Attempt to create a cycle: C -> A (should fail)
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "C", "A", "edge") != 0);
+    ASSUME_NOT_TRUE(fossil_db_bluecrab_link(&db, "C", "A", "edge") == 0);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
