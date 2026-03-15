@@ -231,6 +231,7 @@ int fossil_db_bluecrab_delete(const char *path)
     struct dirent *entry;
     char fullpath[FOSSIL_BLUECRAB_PATH];
     int ret = 0;
+    int is_dir = 0; // Declare is_dir here
 
     while ((entry = readdir(dir)) != NULL)
     {
@@ -244,7 +245,7 @@ int fossil_db_bluecrab_delete(const char *path)
         }
 
 #ifdef _DIRENT_HAVE_D_TYPE
-        int is_dir = (entry->d_type == DT_DIR);
+        is_dir = (entry->d_type == DT_DIR);
 #else
         // If d_type is not available, use stat
         struct stat st;
