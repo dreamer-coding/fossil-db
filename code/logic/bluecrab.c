@@ -61,10 +61,14 @@ static void bc_timestamp(char *buf, size_t size)
     strftime(buf, size, "%Y-%m-%dT%H:%M:%SZ", t);
 }
 
-static void bc_join(char *out, const char *a, const char *b)
+static int bc_join(char *out, size_t out_size, const char *a, const char *b)
 {
-    snprintf(out, FOSSIL_BLUECRAB_PATH, "%s%s%s", a, BC_PATH_SEP, b);
-    out[FOSSIL_BLUECRAB_PATH - 1] = '\0';
+    size_t needed = strlen(a) + strlen(BC_PATH_SEP) + strlen(b) + 1;
+    if (needed > out_size)
+        return -1;
+    snprintf(out, out_size, "%s%s%s", a, BC_PATH_SEP, b);
+    out[out_size - 1] = '\0';
+    return 0;
 }
 
 static int bc_write_file(const char *path, const char *data)
@@ -101,33 +105,50 @@ static char *bc_read_file(const char *path)
     return buf;
 }
 
-static void bc_entry_path(fossil_bluecrab_db *db, const char *id, char *out)
+static int bc_entry_path(fossil_bluecrab_db *db, const char *id, char *out, size_t out_size)
 {
-    // Ensure no buffer overflow: leave space for all components and null terminator
-    snprintf(out, FOSSIL_BLUECRAB_PATH, "%s%sobjects%s%s.fson",
+    size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("objects") + strlen(BC_PATH_SEP) + strlen(id) + strlen(".fson") + 1;
+    if (needed > out_size)
+        return -1;
+    snprintf(out, out_size, "%s%sobjects%s%s.fson",
              db->root_path, BC_PATH_SEP, BC_PATH_SEP, id);
-    out[FOSSIL_BLUECRAB_PATH - 1] = '\0';
+    out[out_size - 1] = '\0';
+    return 0;
 }
 
-static void bc_relations_path(fossil_bluecrab_db *db, char *out)
+static int bc_relations_path(fossil_bluecrab_db *db, char *out, size_t out_size)
 {
-    snprintf(out, FOSSIL_BLUECRAB_PATH, "%s%srelations.fson",
+    size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("relations.fson") + 1;
+    if (needed > out_size)
+        return -1;
+    snprintf(out, out_size, "%s%srelations.fson",
              db->root_path, BC_PATH_SEP);
-    out[FOSSIL_BLUECRAB_PATH - 1] = '\0';
+    out[out_size - 1] = '\0';
+    return 0;
 }
 
-static void bc_commits_path(fossil_bluecrab_db *db, char *out)
+static int bc_commits_path(fossil_bluecrab_db *db, char *out, size_t out_size)
 {
-    snprintf(out, FOSSIL_BLUECRAB_PATH, "%s%scommits",
+    size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("commits") + 1;
+    if (needed > out_size)
+        return -1;
+    snprintf(out, out_size, "%s%scommits",
              db->root_path, BC_PATH_SEP);
-    out[FOSSIL_BLUECRAB_PATH - 1] = '\0';
+    out[out_size - 1] = '\0';
+    return 0;
 }
 
-static void bc_commit_file(fossil_bluecrab_db *db, uint64_t version, char *out)
+static int bc_commit_file(fossil_bluecrab_db *db, uint64_t version, char *out, size_t out_size)
 {
-    snprintf(out, FOSSIL_BLUECRAB_PATH, "%s%scommits%s%llu.fson",
+    char version_buf[32];
+    snprintf(version_buf, sizeof(version_buf), "%llu", (unsigned long long)version);
+    size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("commits") + strlen(BC_PATH_SEP) + strlen(version_buf) + strlen(".fson") + 1;
+    if (needed > out_size)
+        return -1;
+    snprintf(out, out_size, "%s%scommits%s%llu.fson",
              db->root_path, BC_PATH_SEP, BC_PATH_SEP, (unsigned long long)version);
-    out[FOSSIL_BLUECRAB_PATH - 1] = '\0';
+    out[out_size - 1] = '\0';
+    return 0;
 }
 
 /*
@@ -209,7 +230,11 @@ int fossil_db_bluecrab_insert(
 {
     char path[FOSSIL_BLUECRAB_PATH];
 
-    bc_entry_path(db, id, path);
+    if (bc_entry_path(db, id, path, sizeof(path)) != 0)
+    {
+        bc_set_error(db, "path too long");
+        return -1;
+    }
 
     if (bc_write_file(path, fson_data) != 0)
     {
@@ -228,7 +253,8 @@ int fossil_db_bluecrab_get(
 {
     char path[FOSSIL_BLUECRAB_PATH];
 
-    bc_entry_path(db, id, path);
+    if (bc_entry_path(db, id, path, sizeof(path)) != 0)
+        return -1;
 
     *out_fson = bc_read_file(path);
 
@@ -248,7 +274,8 @@ int fossil_db_bluecrab_remove(
     const char *id)
 {
     char path[FOSSIL_BLUECRAB_PATH];
-    bc_entry_path(db, id, path);
+    if (bc_entry_path(db, id, path, sizeof(path)) != 0)
+        return -1;
 
     if (remove(path) != 0)
         return -1;
@@ -302,7 +329,8 @@ int fossil_db_bluecrab_link(
     const char *relation)
 {
     char path[FOSSIL_BLUECRAB_PATH];
-    bc_relations_path(db, path);
+    if (bc_relations_path(db, path, sizeof(path)) != 0)
+        return -1;
 
     FILE *f = fopen(path, "a");
 
@@ -384,7 +412,8 @@ int fossil_db_bluecrab_search_fuzzy(
     size_t *count)
 {
     char objdir[FOSSIL_BLUECRAB_PATH];
-    bc_join(objdir, db->root_path, "objects");
+    if (bc_join(objdir, sizeof(objdir), db->root_path, "objects") != 0)
+        return -1;
 
     DIR *d = opendir(objdir);
     if (!d)
@@ -401,7 +430,8 @@ int fossil_db_bluecrab_search_fuzzy(
             continue;
 
         char path[FOSSIL_BLUECRAB_PATH];
-        snprintf(path, sizeof(path), "%s%s%s", objdir, BC_PATH_SEP, ent->d_name);
+        if (snprintf(path, sizeof(path), "%s%s%s", objdir, BC_PATH_SEP, ent->d_name) >= (int)sizeof(path))
+            continue;
 
         char *data = bc_read_file(path);
         if (!data)
@@ -528,7 +558,8 @@ int fossil_db_bluecrab_commit(
 
     db->last_commit_version++;
 
-    bc_commit_file(db, db->last_commit_version, path);
+    if (bc_commit_file(db, db->last_commit_version, path, sizeof(path)) != 0)
+        return -1;
 
     char timebuf[32];
     bc_timestamp(timebuf, sizeof(timebuf));
@@ -546,7 +577,8 @@ int fossil_db_bluecrab_commit(
 int fossil_db_bluecrab_log(fossil_bluecrab_db *db)
 {
     char commits[FOSSIL_BLUECRAB_PATH];
-    bc_commits_path(db, commits);
+    if (bc_commits_path(db, commits, sizeof(commits)) != 0)
+        return -1;
 
     DIR *d = opendir(commits);
     if (!d)
