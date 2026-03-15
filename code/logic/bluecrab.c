@@ -110,8 +110,10 @@ static int bc_entry_path(fossil_bluecrab_db *db, const char *id, char *out, size
     size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("objects") + strlen(BC_PATH_SEP) + strlen(id) + strlen(".fson") + 1;
     if (needed > out_size)
         return -1;
-    snprintf(out, out_size, "%s%sobjects%s%s.fson",
-             db->root_path, BC_PATH_SEP, BC_PATH_SEP, id);
+    int n = snprintf(out, out_size, "%s%sobjects%s%s.fson",
+                     db->root_path, BC_PATH_SEP, BC_PATH_SEP, id);
+    if (n < 0 || (size_t)n >= out_size)
+        return -1;
     out[out_size - 1] = '\0';
     return 0;
 }
