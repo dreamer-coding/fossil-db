@@ -672,6 +672,9 @@ int fossil_db_bluecrab_search_fuzzy(
     fossil_bluecrab_search_result **results,
     size_t *count)
 {
+    if (!db || !query || !results || !count)
+        return -1;
+
     char objdir[FOSSIL_BLUECRAB_PATH];
     if (bc_join(objdir, sizeof(objdir), db->root_path, "objects") != 0)
         return -1;
@@ -681,7 +684,13 @@ int fossil_db_bluecrab_search_fuzzy(
         return -1;
 
     fossil_bluecrab_search_result *list = NULL;
-    size_t used = 0;
+    size_t used = 0, cap = 16;
+
+    list = malloc(sizeof(*list) * cap);
+    if (!list) {
+        closedir(d);
+        return -1;
+    }
 
     struct dirent *ent;
 
@@ -698,18 +707,42 @@ int fossil_db_bluecrab_search_fuzzy(
         if (!data)
             continue;
 
-        float s = fossil_db_bluecrab_similarity(data, query);
+        // Try to find the best matching field for fuzzy search
+        float best_score = 0.0f;
+        char *best_snippet = NULL;
 
-        if (s > 0.1f)
-        {
-            list = realloc(list, sizeof(*list) * (used + 1));
+        // Try to match against each line in the file
+        char *saveptr = NULL;
+        char *line = strtok_r(data, "\n", &saveptr);
+        while (line) {
+            float s = fossil_db_bluecrab_similarity(line, query);
+            if (s > best_score) {
+                best_score = s;
+                best_snippet = line;
+            }
+            line = strtok_r(NULL, "\n", &saveptr);
+        }
 
+        if (best_score > 0.1f) {
+            if (used == cap) {
+                cap *= 2;
+                fossil_bluecrab_search_result *tmp = realloc(list, sizeof(*list) * cap);
+                if (!tmp) {
+                    free(data);
+                    free(list);
+                    closedir(d);
+                    return -1;
+                }
+                list = tmp;
+            }
             strncpy(list[used].id, ent->d_name, FOSSIL_BLUECRAB_MAX_ID - 1);
             list[used].id[FOSSIL_BLUECRAB_MAX_ID - 1] = '\0';
-            list[used].score = s;
-            strncpy(list[used].snippet, data, 119);
+            list[used].score = best_score;
+            if (best_snippet)
+                strncpy(list[used].snippet, best_snippet, 119);
+            else
+                strncpy(list[used].snippet, data, 119);
             list[used].snippet[119] = '\0';
-
             used++;
         }
 
