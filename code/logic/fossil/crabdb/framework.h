@@ -25,6 +25,7 @@
 #ifndef FOSSIL_CRABDB_FRAMEWORK_H
 #define FOSSIL_CRABDB_FRAMEWORK_H
 
+#include "bluecrab.h"
 #include "cacheshell.h"
 #include "myshell.h"
 #include "noshell.h"
