@@ -372,7 +372,11 @@ int fossil_db_bluecrab_unlink(
 
     // Create a temporary file to write filtered relations
     char tmp_path[FOSSIL_BLUECRAB_PATH];
-    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
+    int n = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
+    if (n < 0 || (size_t)n >= sizeof(tmp_path)) {
+        free(relations_data);
+        return -1;
+    }
 
     FILE *tmpf = fopen(tmp_path, "w");
     if (!tmpf) {
