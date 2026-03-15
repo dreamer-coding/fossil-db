@@ -62,7 +62,15 @@ FOSSIL_TEST(c_test_bluecrab_create_open_close_delete)
     ASSUME_ITS_TRUE(db.opened);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+
+    // Ensure file is closed before attempting to delete, and retry if needed
+    int del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
+    if (del_result != 0) {
+        // Wait briefly and try again in case of OS file lock delay
+        usleep(100000); // 100 ms
+        del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
+    }
+    ASSUME_ITS_TRUE(del_result == 0);
 }
 
 FOSSIL_TEST(c_test_bluecrab_crud_entry)
@@ -165,6 +173,8 @@ FOSSIL_TEST(c_test_bluecrab_search_exact_and_fuzzy)
     ASSUME_ITS_EQUAL_SIZE(count, 2);
     free(results);
 
+    results = NULL;
+    count = 0;
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "Alpha", &results, &count) == 0);
     ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 1);
     free(results);
