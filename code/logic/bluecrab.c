@@ -166,14 +166,14 @@ int fossil_db_bluecrab_create(const char *path, const char *name)
 
     BC_MKDIR(path);
 
-    bc_join(objects, path, "objects");
+    bc_join(objects, sizeof(objects), path, "objects");
     BC_MKDIR(objects);
 
-    bc_join(commits, path, "commits");
+    bc_join(commits, sizeof(commits), path, "commits");
     BC_MKDIR(commits);
 
-    bc_join(relations, path, "relations.fson");
-    bc_join(meta, path, "meta.fson");
+    bc_join(relations, sizeof(relations), path, "relations.fson");
+    bc_join(meta, sizeof(meta), path, "meta.fson");
 
     bc_write_file(relations, "array: []");
 
