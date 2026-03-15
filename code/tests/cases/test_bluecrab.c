@@ -479,7 +479,7 @@ FOSSIL_TEST(c_test_bluecrab_dag_cycle_prevention)
     ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "B", "C", "edge") == 0);
 
     // Attempt to create a cycle: C -> A (should fail)
-    ASSUME_TRUE(fossil_db_bluecrab_link(&db, "C", "A", "edge") != 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "C", "A", "edge") != 0);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
