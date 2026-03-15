@@ -29,19 +29,26 @@
 #include <string.h>
 #include <time.h>
 #include <dirent.h>
-#ifndef DT_REG
-#define DT_REG 8
-#endif
-#ifndef DT_DIR
-#define DT_DIR 4
-#endif
-
 #ifdef _WIN32
 #include <direct.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #define mkdir(path) _mkdir(path)
+#ifndef S_ISDIR
+#define S_ISDIR(m)  (((m) & _S_IFMT) == _S_IFDIR)
+#endif
+#ifndef S_ISREG
+#define S_ISREG(m)  (((m) & _S_IFMT) == _S_IFREG)
+#endif
 #else
+#include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
+
+// Fallback definition for DT_DIR if not defined
+#ifndef DT_DIR
+#define DT_DIR 4
 #endif
 
 
@@ -255,15 +262,26 @@ int fossil_db_bluecrab_delete(
 
         snprintf(buf, sizeof(buf), "%s/%s", path, entry->d_name);
 
-        if (entry->d_type == DT_DIR) {
-            // Recursively delete subdirectory
-            if (fossil_db_bluecrab_delete(buf) != 0)
-                ret = -2;
-        } else {
-            // Remove file
-            if (remove(buf) != 0)
-                ret = -3;
-        }
+        #if defined(_DIRENT_HAVE_D_TYPE)
+                if (entry->d_type == DT_DIR) {
+                    // Recursively delete subdirectory
+                    if (fossil_db_bluecrab_delete(buf) != 0)
+                        ret = -2;
+                } else {
+                    // Remove file
+                    if (remove(buf) != 0)
+                        ret = -3;
+                }
+        #else
+                struct stat st;
+                if (stat(buf, &st) == 0 && S_ISDIR(st.st_mode)) {
+                    if (fossil_db_bluecrab_delete(buf) != 0)
+                        ret = -2;
+                } else {
+                    if (remove(buf) != 0)
+                        ret = -3;
+                }
+        #endif
     }
     closedir(dir);
 
@@ -777,8 +795,16 @@ int fossil_db_bluecrab_search_exact(
 
     struct dirent *entry;
     while ((entry = readdir(dir))) {
-        if (entry->d_type != DT_REG)
-            continue;
+        #if defined(_DIRENT_HAVE_D_TYPE)
+                if (entry->d_type != DT_REG)
+                    continue;
+        #else
+                char fullpath[FOSSIL_BLUECRAB_PATH];
+                snprintf(fullpath, sizeof(fullpath), "%s/%s", objects_dir, entry->d_name);
+                struct stat st;
+                if (stat(fullpath, &st) != 0 || !S_ISREG(st.st_mode))
+                    continue;
+        #endif
         const char *dot = strrchr(entry->d_name, '.');
         if (!dot || strcmp(dot, ".fson") != 0)
             continue;
@@ -1234,22 +1260,20 @@ int fossil_db_bluecrab_checkout(
     char snapshot_dir[FOSSIL_BLUECRAB_PATH];
     snprintf(snapshot_dir, sizeof(snapshot_dir), "%s/snapshots/%s", db->root_path, version);
 
-    struct stat st;
-    if (stat(snapshot_dir, &st) == 0
-#ifdef _WIN32
-        && (st.st_mode & _S_IFDIR)
-#else
-        && S_ISDIR(st.st_mode)
-#endif
-    ) {
+struct stat st;
+if (stat(snapshot_dir, &st) == 0 && S_ISDIR(st.st_mode)) {
         DIR *snapdir = opendir(snapshot_dir);
         if (snapdir) {
             struct dirent *entry;
             while ((entry = readdir(snapdir))) {
 #if defined(_DIRENT_HAVE_D_TYPE)
+#if defined(_DIRENT_HAVE_D_TYPE)
                 int is_reg = (entry->d_type == DT_REG);
 #else
-                int is_reg = 1;
+                char file_path[FOSSIL_BLUECRAB_PATH];
+                snprintf(file_path, sizeof(file_path), "%s/%s", snapshot_dir, entry->d_name);
+                struct stat st2;
+                int is_reg = (stat(file_path, &st2) == 0 && S_ISREG(st2.st_mode));
 #endif
                 if (is_reg) {
                     char src[FOSSIL_BLUECRAB_PATH];
@@ -1488,8 +1512,16 @@ int fossil_db_bluecrab_backup(
 #endif
                 struct dirent *entry;
                 while ((entry = readdir(dir))) {
+#if defined(_DIRENT_HAVE_D_TYPE)
                     if (entry->d_type != DT_REG)
                         continue;
+#else
+                    char file_src[FOSSIL_BLUECRAB_PATH];
+                    snprintf(file_src, sizeof(file_src), "%s/%s", src, entry->d_name);
+                    struct stat st2;
+                    if (stat(file_src, &st2) != 0 || !S_ISREG(st2.st_mode))
+                        continue;
+#endif
                     char file_src[FOSSIL_BLUECRAB_PATH];
                     char file_dst[FOSSIL_BLUECRAB_PATH];
                     snprintf(file_src, sizeof(file_src), "%s/%s", src, entry->d_name);
@@ -1555,8 +1587,16 @@ int fossil_db_bluecrab_restore(
                 if (!dir) continue;
                 struct dirent *entry;
                 while ((entry = readdir(dir))) {
+#if defined(_DIRENT_HAVE_D_TYPE)
                     if (entry->d_type != DT_REG)
                         continue;
+#else
+                    char file_src[FOSSIL_BLUECRAB_PATH];
+                    snprintf(file_src, sizeof(file_src), "%s/%s", src, entry->d_name);
+                    struct stat st2;
+                    if (stat(file_src, &st2) != 0 || !S_ISREG(st2.st_mode))
+                        continue;
+#endif
                     char file_src[FOSSIL_BLUECRAB_PATH];
                     char file_dst[FOSSIL_BLUECRAB_PATH];
                     snprintf(file_src, sizeof(file_src), "%s/%s", src, entry->d_name);
