@@ -373,13 +373,15 @@ int fossil_db_bluecrab_unlink(
     // Create a temporary file to write filtered relations
     char tmp_path[FOSSIL_BLUECRAB_PATH];
     int n = snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", path);
-    if (n < 0 || (size_t)n >= sizeof(tmp_path)) {
+    if (n < 0 || (size_t)n >= sizeof(tmp_path))
+    {
         free(relations_data);
         return -1;
     }
 
     FILE *tmpf = fopen(tmp_path, "w");
-    if (!tmpf) {
+    if (!tmpf)
+    {
         free(relations_data);
         return -1;
     }
@@ -387,11 +389,15 @@ int fossil_db_bluecrab_unlink(
     // Remove lines matching both source_id and target_id
     char *line = strtok(relations_data, "\n");
     int removed = 0;
-    while (line) {
-        if (strstr(line, source_id) && strstr(line, target_id)) {
+    while (line)
+    {
+        if (strstr(line, source_id) && strstr(line, target_id))
+        {
             removed = 1;
             // skip writing this line
-        } else {
+        }
+        else
+        {
             fprintf(tmpf, "%s\n", line);
         }
         line = strtok(NULL, "\n");
@@ -401,12 +407,15 @@ int fossil_db_bluecrab_unlink(
     free(relations_data);
 
     // Replace original file if any line was removed
-    if (removed) {
+    if (removed)
+    {
         remove(path);
         rename(tmp_path, path);
         db->relation_count--;
         return 0;
-    } else {
+    }
+    else
+    {
         remove(tmp_path);
         return -1;
     }
@@ -432,21 +441,25 @@ int fossil_db_bluecrab_get_relations(
     size_t rel_cap = 8;
     size_t rel_count = 0;
     fossil_bluecrab_relation *rels = malloc(rel_cap * sizeof(fossil_bluecrab_relation));
-    if (!rels) {
+    if (!rels)
+    {
         free(relations_data);
         return -1;
     }
 
     char *line = strtok(relations_data, "\n");
-    while (line) {
-        if (strstr(line, id)) {
+    while (line)
+    {
+        if (strstr(line, id))
+        {
             // crude parse: extract source, target, type, time
             fossil_bluecrab_relation rel = {0};
             char *src = strstr(line, "source: cstr:\"");
             char *tgt = strstr(line, "target: cstr:\"");
             char *typ = strstr(line, "type: cstr:\"");
             char *tim = strstr(line, "time: datetime:\"");
-            if (src && tgt && typ && tim) {
+            if (src && tgt && typ && tim)
+            {
                 src += strlen("source: cstr:\"");
                 tgt += strlen("target: cstr:\"");
                 typ += strlen("type: cstr:\"");
@@ -455,30 +468,38 @@ int fossil_db_bluecrab_get_relations(
                 char *tgt_end = strchr(tgt, '"');
                 char *typ_end = strchr(typ, '"');
                 char *tim_end = strchr(tim, '"');
-                if (src_end && tgt_end && typ_end && tim_end) {
+                if (src_end && tgt_end && typ_end && tim_end)
+                {
                     size_t n;
                     n = src_end - src;
-                    if (n >= sizeof(rel.source_id)) n = sizeof(rel.source_id) - 1;
+                    if (n >= sizeof(rel.source_id))
+                        n = sizeof(rel.source_id) - 1;
                     strncpy(rel.source_id, src, n);
                     rel.source_id[n] = 0;
                     n = tgt_end - tgt;
-                    if (n >= sizeof(rel.target_id)) n = sizeof(rel.target_id) - 1;
+                    if (n >= sizeof(rel.target_id))
+                        n = sizeof(rel.target_id) - 1;
                     strncpy(rel.target_id, tgt, n);
                     rel.target_id[n] = 0;
                     n = typ_end - typ;
-                    if (n >= sizeof(rel.relation_type)) n = sizeof(rel.relation_type) - 1;
+                    if (n >= sizeof(rel.relation_type))
+                        n = sizeof(rel.relation_type) - 1;
                     strncpy(rel.relation_type, typ, n);
                     rel.relation_type[n] = 0;
                     n = tim_end - tim;
-                    if (n >= sizeof(rel.created_at)) n = sizeof(rel.created_at) - 1;
+                    if (n >= sizeof(rel.created_at))
+                        n = sizeof(rel.created_at) - 1;
                     strncpy(rel.created_at, tim, n);
                     rel.created_at[n] = 0;
                     // Only add if id matches source or target
-                    if (strcmp(rel.source_id, id) == 0 || strcmp(rel.target_id, id) == 0) {
-                        if (rel_count == rel_cap) {
+                    if (strcmp(rel.source_id, id) == 0 || strcmp(rel.target_id, id) == 0)
+                    {
+                        if (rel_count == rel_cap)
+                        {
                             rel_cap *= 2;
                             fossil_bluecrab_relation *tmp = realloc(rels, rel_cap * sizeof(fossil_bluecrab_relation));
-                            if (!tmp) {
+                            if (!tmp)
+                            {
                                 free(rels);
                                 free(relations_data);
                                 return -1;
@@ -547,11 +568,13 @@ int fossil_db_bluecrab_search_exact(
         snprintf(search_pattern, sizeof(search_pattern), "%s:", field);
         char *field_pos = strstr(data, search_pattern);
         int match = 0;
-        if (field_pos) {
+        if (field_pos)
+        {
             // Move past 'field:'
             field_pos += strlen(search_pattern);
             // Skip whitespace
-            while (*field_pos == ' ' || *field_pos == '\t') field_pos++;
+            while (*field_pos == ' ' || *field_pos == '\t')
+                field_pos++;
             // Now check if value matches (as substring)
             if (strncmp(field_pos, value, strlen(value)) == 0)
                 match = 1;
@@ -559,7 +582,8 @@ int fossil_db_bluecrab_search_exact(
                 match = 1;
         }
 
-        if (match) {
+        if (match)
+        {
             list = realloc(list, sizeof(*list) * (used + 1));
             strncpy(list[used].id, ent->d_name, FOSSIL_BLUECRAB_MAX_ID - 1);
             list[used].id[FOSSIL_BLUECRAB_MAX_ID - 1] = '\0';
@@ -874,15 +898,15 @@ int fossil_db_bluecrab_restore(
     fossil_bluecrab_db *db,
     const char *backup_path)
 {
-    #ifdef _WIN32
-        char cmd[1024];
-        snprintf(cmd, sizeof(cmd), "xcopy %s %s /E /I /Y", backup_path, db->root_path);
-        return system(cmd);
-    #else
-        char cmd[1024];
-        snprintf(cmd, sizeof(cmd), "cp -r %s/* %s/", backup_path, db->root_path);
-        return system(cmd);
-    #endif
+#ifdef _WIN32
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "xcopy %s %s /E /I /Y", backup_path, db->root_path);
+    return system(cmd);
+#else
+    char cmd[1024];
+    snprintf(cmd, sizeof(cmd), "cp -r %s/* %s/", backup_path, db->root_path);
+    return system(cmd);
+#endif
 }
 
 int fossil_db_bluecrab_compact(fossil_bluecrab_db *db)

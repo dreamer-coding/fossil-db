@@ -35,11 +35,13 @@
 
 FOSSIL_SUITE(c_bluecrab_fixture);
 
-FOSSIL_SETUP(c_bluecrab_fixture) {
+FOSSIL_SETUP(c_bluecrab_fixture)
+{
     // Setup the test fixture
 }
 
-FOSSIL_TEARDOWN(c_bluecrab_fixture) {
+FOSSIL_TEARDOWN(c_bluecrab_fixture)
+{
     // Teardown the test fixture
 }
 
@@ -50,7 +52,8 @@ FOSSIL_TEARDOWN(c_bluecrab_fixture) {
 #define TEST_DB_PATH "/tmp/bluecrab_testdb"
 #define TEST_DB_NAME "TestDB"
 
-FOSSIL_TEST(c_test_bluecrab_create_open_close_delete) {
+FOSSIL_TEST(c_test_bluecrab_create_open_close_delete)
+{
     remove(TEST_DB_PATH);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
 
@@ -62,7 +65,8 @@ FOSSIL_TEST(c_test_bluecrab_create_open_close_delete) {
     ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
 }
 
-FOSSIL_TEST(c_test_bluecrab_crud_entry) {
+FOSSIL_TEST(c_test_bluecrab_crud_entry)
+{
     remove(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
@@ -74,23 +78,26 @@ FOSSIL_TEST(c_test_bluecrab_crud_entry) {
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, id, fson) == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, id, &out) == 0);
-    ASSUME_ITS_TRUE(out && strstr(out, "Alice"));
+    ASSUME_NOT_CNULL(out);
+    ASSUME_ITS_CSTR_CONTAINS(out, "Alice");
     free(out);
 
     const char *fson2 = "object: { name: cstr:\"Bob\", age: i32:40 }";
     ASSUME_ITS_TRUE(fossil_db_bluecrab_update(&db, id, fson2) == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, id, &out) == 0);
-    ASSUME_ITS_TRUE(out && strstr(out, "Bob"));
+    ASSUME_NOT_CNULL(out);
+    ASSUME_ITS_CSTR_CONTAINS(out, "Bob");
     free(out);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, id) == 0);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, id, &out) != 0);
+    ASSUME_NOT_TRUE(fossil_db_bluecrab_get(&db, id, &out) == 0);
 
     fossil_db_bluecrab_close(&db);
     fossil_db_bluecrab_delete(TEST_DB_PATH);
 }
 
-FOSSIL_TEST(c_test_bluecrab_subentry) {
+FOSSIL_TEST(c_test_bluecrab_subentry)
+{
     remove(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
@@ -103,14 +110,16 @@ FOSSIL_TEST(c_test_bluecrab_subentry) {
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_insert_sub(&db, parent, sub, fson) == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_get_sub(&db, parent, sub, &out) == 0);
-    ASSUME_ITS_TRUE(out && strstr(out, "123"));
+    ASSUME_NOT_CNULL(out);
+    ASSUME_ITS_CSTR_CONTAINS(out, "123");
     free(out);
 
     fossil_db_bluecrab_close(&db);
     fossil_db_bluecrab_delete(TEST_DB_PATH);
 }
 
-FOSSIL_TEST(c_test_bluecrab_relations) {
+FOSSIL_TEST(c_test_bluecrab_relations)
+{
     remove(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
@@ -126,19 +135,20 @@ FOSSIL_TEST(c_test_bluecrab_relations) {
     fossil_bluecrab_relation *rels = NULL;
     size_t count = 0;
     ASSUME_ITS_TRUE(fossil_db_bluecrab_get_relations(&db, "A", &rels, &count) == 0);
-    ASSUME_ITS_TRUE(count >= 2);
+    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 2);
     free(rels);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_unlink(&db, "A", "B") == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_get_relations(&db, "A", &rels, &count) == 0);
-    ASSUME_ITS_TRUE(count >= 1);
+    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 1);
     free(rels);
 
     fossil_db_bluecrab_close(&db);
     fossil_db_bluecrab_delete(TEST_DB_PATH);
 }
 
-FOSSIL_TEST(c_test_bluecrab_search_exact_and_fuzzy) {
+FOSSIL_TEST(c_test_bluecrab_search_exact_and_fuzzy)
+{
     remove(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
@@ -152,18 +162,19 @@ FOSSIL_TEST(c_test_bluecrab_search_exact_and_fuzzy) {
     size_t count = 0;
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "tag", "red", &results, &count) == 0);
-    ASSUME_ITS_TRUE(count == 2);
+    ASSUME_ITS_EQUAL_SIZE(count, 2);
     free(results);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "Alpha", &results, &count) == 0);
-    ASSUME_ITS_TRUE(count >= 1);
+    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 1);
     free(results);
 
     fossil_db_bluecrab_close(&db);
     fossil_db_bluecrab_delete(TEST_DB_PATH);
 }
 
-FOSSIL_TEST(c_test_bluecrab_hash_and_verify) {
+FOSSIL_TEST(c_test_bluecrab_hash_and_verify)
+{
     remove(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
@@ -176,6 +187,7 @@ FOSSIL_TEST(c_test_bluecrab_hash_and_verify) {
     char *data = NULL;
     char hash[FOSSIL_BLUECRAB_HASH_SIZE];
     ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, id, &data) == 0);
+    ASSUME_NOT_CNULL(data);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_hash_entry(data, hash) == 0);
     free(data);
 
@@ -185,7 +197,8 @@ FOSSIL_TEST(c_test_bluecrab_hash_and_verify) {
     fossil_db_bluecrab_delete(TEST_DB_PATH);
 }
 
-FOSSIL_TEST(c_test_bluecrab_commit_log_checkout) {
+FOSSIL_TEST(c_test_bluecrab_commit_log_checkout)
+{
     remove(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
@@ -206,7 +219,8 @@ FOSSIL_TEST(c_test_bluecrab_commit_log_checkout) {
     fossil_db_bluecrab_delete(TEST_DB_PATH);
 }
 
-FOSSIL_TEST(c_test_bluecrab_meta_and_advanced) {
+FOSSIL_TEST(c_test_bluecrab_meta_and_advanced)
+{
     remove(TEST_DB_PATH);
     fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
     fossil_bluecrab_db db;
@@ -234,7 +248,8 @@ FOSSIL_TEST(c_test_bluecrab_meta_and_advanced) {
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
-FOSSIL_TEST_GROUP(c_bluecrab_database_tests) {
+FOSSIL_TEST_GROUP(c_bluecrab_database_tests)
+{
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_create_open_close_delete);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_crud_entry);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_subentry);
