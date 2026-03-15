@@ -255,6 +255,327 @@ FOSSIL_TEST(c_test_bluecrab_meta_and_advanced)
     FOSSIL_SANITY_SYS_DELETE_FILE(backup_path);
 }
 
+FOSSIL_TEST(c_test_bluecrab_multiple_entries_and_bulk_crud)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
+    fossil_bluecrab_db db;
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
+
+    // Insert multiple entries
+    const char *ids[] = {"id1", "id2", "id3", "id4"};
+    const char *fsons[] = {
+        "object: { name: cstr:\"One\", value: i32:1 }",
+        "object: { name: cstr:\"Two\", value: i32:2 }",
+        "object: { name: cstr:\"Three\", value: i32:3 }",
+        "object: { name: cstr:\"Four\", value: i32:4 }"
+    };
+    char *out = NULL;
+    for (int i = 0; i < 4; ++i) {
+        ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, ids[i], fsons[i]) == 0);
+        ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, ids[i], &out) == 0);
+        ASSUME_NOT_CNULL(out);
+        ASSUME_ITS_CSTR_CONTAINS(out, ids[i][0] == 'i' ? "object" : "");
+        free(out);
+    }
+
+    // Remove all entries
+    for (int i = 0; i < 4; ++i) {
+        ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, ids[i]) == 0);
+    }
+
+    // Confirm removal
+    for (int i = 0; i < 4; ++i) {
+        ASSUME_NOT_TRUE(fossil_db_bluecrab_get(&db, ids[i], &out) == 0);
+    }
+
+    fossil_db_bluecrab_close(&db);
+    fossil_db_bluecrab_delete(TEST_DB_PATH);
+}
+
+FOSSIL_TEST(c_test_bluecrab_subentry_update_and_remove)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
+    fossil_bluecrab_db db;
+    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
+
+    const char *parent = "parent2";
+    const char *sub = "child2";
+    const char *fson = "object: { value: i32:555 }";
+    char *out = NULL;
+
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert_sub(&db, parent, sub, fson) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_get_sub(&db, parent, sub, &out) == 0);
+    ASSUME_NOT_CNULL(out);
+    ASSUME_ITS_CSTR_CONTAINS(out, "555");
+    free(out);
+
+    // Update subentry
+    const char *fson2 = "object: { value: i32:777 }";
+    char id[FOSSIL_BLUECRAB_MAX_ID * 2];
+    snprintf(id, sizeof(id), "%s_%s", parent, sub);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_update(&db, id, fson2) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_get_sub(&db, parent, sub, &out) == 0);
+    ASSUME_ITS_CSTR_CONTAINS(out, "777");
+    free(out);
+
+    // Remove subentry
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, id) == 0);
+    ASSUME_NOT_TRUE(fossil_db_bluecrab_get_sub(&db, parent, sub, &out) == 0);
+
+    fossil_db_bluecrab_close(&db);
+    fossil_db_bluecrab_delete(TEST_DB_PATH);
+}
+
+FOSSIL_TEST(c_test_bluecrab_relation_metadata_and_types)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
+    fossil_bluecrab_db db;
+    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
+
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "X", "object: { }") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "Y", "object: { }") == 0);
+
+    // Link with different relation types
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "X", "Y", "parent") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "Y", "X", "child") == 0);
+
+    fossil_bluecrab_relation *rels = NULL;
+    size_t count = 0;
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_get_relations(&db, "X", &rels, &count) == 0);
+    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 2);
+    int found_parent = 0, found_child = 0;
+    for (size_t i = 0; i < count; ++i) {
+        if (strcmp(rels[i].relation_type, "parent") == 0) found_parent = 1;
+        if (strcmp(rels[i].relation_type, "child") == 0) found_child = 1;
+    }
+    ASSUME_ITS_TRUE(found_parent && found_child);
+    free(rels);
+
+    fossil_db_bluecrab_close(&db);
+    fossil_db_bluecrab_delete(TEST_DB_PATH);
+}
+
+FOSSIL_TEST(c_test_bluecrab_search_no_results_and_empty_db)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
+    fossil_bluecrab_db db;
+    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
+
+    fossil_bluecrab_search_result *results = NULL;
+    size_t count = 0;
+
+    // Search in empty DB
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "field", "value", &results, &count) == 0);
+    ASSUME_ITS_SIZE(count, 0);
+    free(results);
+
+    // Insert unrelated entry
+    fossil_db_bluecrab_insert(&db, "foo", "object: { name: cstr:\"bar\" }");
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "name", "baz", &results, &count) == 0);
+    ASSUME_ITS_SIZE(count, 0);
+    free(results);
+
+    // Fuzzy search with no match
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "notfound", &results, &count) == 0);
+    ASSUME_ITS_SIZE(count, 0);
+    free(results);
+
+    fossil_db_bluecrab_close(&db);
+    fossil_db_bluecrab_delete(TEST_DB_PATH);
+}
+
+FOSSIL_TEST(c_test_bluecrab_commit_and_checkout_invalid_version)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
+    fossil_bluecrab_db db;
+    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
+
+    fossil_db_bluecrab_insert(&db, "v1", "object: { v: i32:10 }");
+    fossil_db_bluecrab_commit(&db, "Commit 1");
+
+    // Try to checkout a non-existent version
+    ASSUME_NOT_TRUE(fossil_db_bluecrab_checkout(&db, "9999") == 0);
+
+    fossil_db_bluecrab_close(&db);
+    fossil_db_bluecrab_delete(TEST_DB_PATH);
+}
+
+FOSSIL_TEST(c_test_bluecrab_hash_consistency)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
+    fossil_bluecrab_db db;
+    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
+
+    const char *id = "hashcheck";
+    const char *fson = "object: { foo: cstr:\"baz\" }";
+    fossil_db_bluecrab_insert(&db, id, fson);
+
+    char *data1 = NULL;
+    char hash1[FOSSIL_BLUECRAB_HASH_SIZE];
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, id, &data1) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_hash_entry(data1, hash1) == 0);
+
+    // Hash again, should be the same
+    char hash2[FOSSIL_BLUECRAB_HASH_SIZE];
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_hash_entry(data1, hash2) == 0);
+    ASSUME_ITS_CSTR_EQUALS(hash1, hash2);
+    free(data1);
+
+    fossil_db_bluecrab_close(&db);
+    fossil_db_bluecrab_delete(TEST_DB_PATH);
+}
+
+FOSSIL_TEST(c_test_bluecrab_bulk_insert_and_fuzzy_rank)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
+    fossil_bluecrab_db db;
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
+
+    // Bulk insert 100 entries with similar and distinct names
+    char id[32], fson[128];
+    for (int i = 0; i < 100; ++i) {
+        snprintf(id, sizeof(id), "user_%02d", i);
+        snprintf(fson, sizeof(fson), "object: { name: cstr:\"User%02d\", tag: cstr:\"%s\" }", i, (i % 2 == 0) ? "even" : "odd");
+        ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, id, fson) == 0);
+    }
+
+    // Fuzzy search for "User1" (should match User10, User11, User12, etc.)
+    fossil_bluecrab_search_result *results = NULL;
+    size_t count = 0;
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "User1", &results, &count) == 0);
+    ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 10);
+
+    // Rank results and check that the top result is "user_10" or "user_11"
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_rank_results(results, count) == 0);
+    float top_score = results[0].score;
+    int top_is_expected = (strcmp(results[0].id, "user_10") == 0 || strcmp(results[0].id, "user_11") == 0);
+    ASSUME_ITS_TRUE(top_is_expected);
+    free(results);
+
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+}
+
+FOSSIL_TEST(c_test_bluecrab_dag_cycle_prevention)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
+    fossil_bluecrab_db db;
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
+
+    // Insert three nodes
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "A", "object: { }") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "B", "object: { }") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "C", "object: { }") == 0);
+
+    // Create a DAG: A -> B -> C
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "A", "B", "edge") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "B", "C", "edge") == 0);
+
+    // Attempt to create a cycle: C -> A (should fail)
+    ASSUME_NOT_TRUE(fossil_db_bluecrab_link(&db, "C", "A", "edge") == 0);
+
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+}
+
+FOSSIL_TEST(c_test_bluecrab_subentry_bulk_and_removal)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
+    fossil_bluecrab_db db;
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
+
+    // Insert parent entry
+    const char *parent = "parent_bulk";
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, parent, "object: { }") == 0);
+
+    // Insert 20 sub-entries
+    char subid[32], fson[64];
+    for (int i = 0; i < 20; ++i) {
+        snprintf(subid, sizeof(subid), "sub_%02d", i);
+        snprintf(fson, sizeof(fson), "object: { value: i32:%d }", i * 10);
+        ASSUME_ITS_TRUE(fossil_db_bluecrab_insert_sub(&db, parent, subid, fson) == 0);
+    }
+
+    // Remove all sub-entries
+    for (int i = 0; i < 20; ++i) {
+        snprintf(subid, sizeof(subid), "sub_%02d", i);
+        char fullid[FOSSIL_BLUECRAB_MAX_ID * 2];
+        snprintf(fullid, sizeof(fullid), "%s_%s", parent, subid);
+        ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, fullid) == 0);
+    }
+
+    // Confirm removal
+    char *out = NULL;
+    for (int i = 0; i < 20; ++i) {
+        snprintf(subid, sizeof(subid), "sub_%02d", i);
+        ASSUME_NOT_TRUE(fossil_db_bluecrab_get_sub(&db, parent, subid, &out) == 0);
+    }
+
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+}
+
+FOSSIL_TEST(c_test_bluecrab_backup_restore_integrity)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
+    fossil_bluecrab_db db;
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
+
+    // Insert entries
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "bk1", "object: { foo: cstr:\"bar\" }") == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "bk2", "object: { foo: cstr:\"baz\" }") == 0);
+
+    // Backup
+    const char *backup_path = "/tmp/bluecrab_testdb_adv_backup";
+    FOSSIL_SANITY_SYS_DELETE_FILE(backup_path);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_backup(&db, backup_path) == 0);
+
+    // Remove one entry and verify it's gone
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, "bk2") == 0);
+    char *out = NULL;
+    ASSUME_NOT_TRUE(fossil_db_bluecrab_get(&db, "bk2", &out) == 0);
+
+    // Restore from backup and verify both entries exist
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_restore(&db, backup_path) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, "bk1", &out) == 0);
+    free(out);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, "bk2", &out) == 0);
+    free(out);
+
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    FOSSIL_SANITY_SYS_DELETE_FILE(backup_path);
+}
+
+FOSSIL_TEST(c_test_bluecrab_similarity_and_ranking)
+{
+    // Test the similarity scoring and ranking helpers
+    float sim1 = fossil_db_bluecrab_similarity("Alpha", "Alpha");
+    float sim2 = fossil_db_bluecrab_similarity("Alpha", "Alfa");
+    float sim3 = fossil_db_bluecrab_similarity("Alpha", "Beta");
+    ASSUME_ITS_TRUE(sim1 > sim2 && sim2 > sim3);
+
+    fossil_bluecrab_search_result results[3] = {
+        {.id = "A", .score = sim1},
+        {.id = "B", .score = sim2},
+        {.id = "C", .score = sim3}
+    };
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_rank_results(results, 3) == 0);
+    ASSUME_ITS_CSTR_EQUALS(results[0].id, "A");
+    ASSUME_ITS_CSTR_EQUALS(results[1].id, "B");
+    ASSUME_ITS_CSTR_EQUALS(results[2].id, "C");
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
@@ -268,6 +589,17 @@ FOSSIL_TEST_GROUP(c_bluecrab_database_tests)
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_hash_and_verify);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_commit_log_checkout);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_meta_and_advanced);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_multiple_entries_and_bulk_crud);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_subentry_update_and_remove);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_relation_metadata_and_types);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_search_no_results_and_empty_db);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_commit_and_checkout_invalid_version);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_hash_consistency);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_bulk_insert_and_fuzzy_rank);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_dag_cycle_prevention);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_subentry_bulk_and_removal);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_backup_restore_integrity);
+    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_similarity_and_ranking);
 
     FOSSIL_TEST_REGISTER(c_bluecrab_fixture);
 } // end of tests
