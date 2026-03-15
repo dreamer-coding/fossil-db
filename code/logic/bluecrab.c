@@ -38,11 +38,12 @@
 #define BC_MKDIR(p) _mkdir(p)
 #define BC_PATH_SEP "\\"
 #else
-#include <sys/stat.h>
 #include <unistd.h>
 #define BC_MKDIR(p) mkdir(p, 0755)
 #define BC_PATH_SEP "/"
 #endif
+
+#include <sys/stat.h>
 
 /*
 ------------------------------------------------------------
