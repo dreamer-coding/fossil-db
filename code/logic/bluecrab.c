@@ -141,12 +141,13 @@ static int bc_commits_path(fossil_bluecrab_db *db, char *out, size_t out_size)
 static int bc_commit_file(fossil_bluecrab_db *db, uint64_t version, char *out, size_t out_size)
 {
     char version_buf[32];
-    snprintf(version_buf, sizeof(version_buf), "%llu", (unsigned long long)version);
-    size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("commits") + strlen(BC_PATH_SEP) + strlen(version_buf) + strlen(".fson") + 1;
-    if (needed > out_size)
+    int n = snprintf(version_buf, sizeof(version_buf), "%llu", (unsigned long long)version);
+    if (n < 0 || (size_t)n >= sizeof(version_buf))
         return -1;
-    snprintf(out, out_size, "%s%scommits%s%llu.fson",
-             db->root_path, BC_PATH_SEP, BC_PATH_SEP, (unsigned long long)version);
+    n = snprintf(out, out_size, "%s%scommits%s%llu.fson",
+                 db->root_path, BC_PATH_SEP, BC_PATH_SEP, (unsigned long long)version);
+    if (n < 0 || (size_t)n >= out_size)
+        return -1;
     out[out_size - 1] = '\0';
     return 0;
 }
