@@ -454,7 +454,6 @@ FOSSIL_TEST(c_test_bluecrab_bulk_insert_and_fuzzy_rank)
 
     // Rank results and check that the top result is "user_10" or "user_11"
     ASSUME_ITS_TRUE(fossil_db_bluecrab_rank_results(results, count) == 0);
-    float top_score = results[0].score;
     int top_is_expected = (strcmp(results[0].id, "user_10") == 0 || strcmp(results[0].id, "user_11") == 0);
     ASSUME_ITS_TRUE(top_is_expected);
     free(results);
