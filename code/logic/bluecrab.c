@@ -1122,7 +1122,14 @@ int fossil_db_bluecrab_log(
     printf("Commit Log for database: %s\n", db->name);
     printf("----------------------------------------\n");
     while ((entry = readdir(dir))) {
-        if (entry->d_type != DT_REG)
+        // Cross-platform check for regular file
+#if defined(_DIRENT_HAVE_D_TYPE)
+        int is_reg = (entry->d_type == DT_REG);
+#else
+        // On platforms without d_type, check by file extension only
+        int is_reg = 1;
+#endif
+        if (!is_reg)
             continue;
         const char *dot = strrchr(entry->d_name, '.');
         if (!dot || strcmp(dot, ".fson") != 0)
@@ -1206,7 +1213,14 @@ int fossil_db_bluecrab_checkout(
     if (dir) {
         struct dirent *entry;
         while ((entry = readdir(dir))) {
-            if (entry->d_type == DT_REG) {
+            // Cross-platform check for regular file
+#if defined(_DIRENT_HAVE_D_TYPE)
+            int is_reg = (entry->d_type == DT_REG);
+#else
+            // On platforms without d_type, check by file extension only
+            int is_reg = 1;
+#endif
+            if (is_reg) {
                 char file_path[FOSSIL_BLUECRAB_PATH];
                 snprintf(file_path, sizeof(file_path), "%s/%s", objects_dir, entry->d_name);
                 remove(file_path);
@@ -1221,12 +1235,23 @@ int fossil_db_bluecrab_checkout(
     snprintf(snapshot_dir, sizeof(snapshot_dir), "%s/snapshots/%s", db->root_path, version);
 
     struct stat st;
-    if (stat(snapshot_dir, &st) == 0 && S_ISDIR(st.st_mode)) {
+    if (stat(snapshot_dir, &st) == 0
+#ifdef _WIN32
+        && (st.st_mode & _S_IFDIR)
+#else
+        && S_ISDIR(st.st_mode)
+#endif
+    ) {
         DIR *snapdir = opendir(snapshot_dir);
         if (snapdir) {
             struct dirent *entry;
             while ((entry = readdir(snapdir))) {
-                if (entry->d_type == DT_REG) {
+#if defined(_DIRENT_HAVE_D_TYPE)
+                int is_reg = (entry->d_type == DT_REG);
+#else
+                int is_reg = 1;
+#endif
+                if (is_reg) {
                     char src[FOSSIL_BLUECRAB_PATH];
                     char dst[FOSSIL_BLUECRAB_PATH];
                     snprintf(src, sizeof(src), "%s/%s", snapshot_dir, entry->d_name);
@@ -1356,7 +1381,13 @@ int fossil_db_bluecrab_meta_rebuild(
     if (dir) {
         struct dirent *entry;
         while ((entry = readdir(dir))) {
-            if (entry->d_type == DT_REG) {
+#if defined(_DIRENT_HAVE_D_TYPE)
+            int is_reg = (entry->d_type == DT_REG);
+#else
+            // On platforms without d_type, check by file extension only
+            int is_reg = 1;
+#endif
+            if (is_reg) {
                 const char *dot = strrchr(entry->d_name, '.');
                 if (dot && strcmp(dot, ".fson") == 0)
                     entry_count++;
@@ -1387,13 +1418,19 @@ int fossil_db_bluecrab_meta_rebuild(
     if (cdir) {
         struct dirent *entry;
         while ((entry = readdir(cdir))) {
-            if (entry->d_type == DT_REG) {
+#if defined(_DIRENT_HAVE_D_TYPE)
+            int is_reg = (entry->d_type == DT_REG);
+#else
+            int is_reg = 1;
+#endif
+            if (is_reg) {
                 const char *dot = strrchr(entry->d_name, '.');
                 if (dot && strcmp(dot, ".fson") == 0) {
                     char ver_str[32] = {0};
                     size_t len = dot - entry->d_name;
                     if (len < sizeof(ver_str)) {
                         strncpy(ver_str, entry->d_name, len);
+                        ver_str[len] = '\0';
                         uint64_t v = strtoull(ver_str, NULL, 10);
                         if (v > max_version)
                             max_version = v;
@@ -1591,7 +1628,14 @@ int fossil_db_bluecrab_verify(
     struct dirent *entry;
     int errors = 0;
     while ((entry = readdir(dir))) {
-        if (entry->d_type != DT_REG)
+        // Cross-platform check for regular file
+#if defined(_DIRENT_HAVE_D_TYPE)
+        int is_reg = (entry->d_type == DT_REG);
+#else
+        // On platforms without d_type, check by file extension only
+        int is_reg = 1;
+#endif
+        if (!is_reg)
             continue;
         const char *dot = strrchr(entry->d_name, '.');
         if (!dot || strcmp(dot, ".fson") != 0)
