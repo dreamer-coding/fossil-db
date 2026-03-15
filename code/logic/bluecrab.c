@@ -99,7 +99,13 @@ static char *bc_read_file(const char *path)
         return NULL;
     }
 
-    fread(buf, 1, size, f);
+    size_t read_bytes = fread(buf, 1, size, f);
+    if (read_bytes != (size_t)size)
+    {
+        free(buf);
+        fclose(f);
+        return NULL;
+    }
     buf[size] = 0;
     fclose(f);
     return buf;
@@ -107,9 +113,6 @@ static char *bc_read_file(const char *path)
 
 static int bc_entry_path(fossil_bluecrab_db *db, const char *id, char *out, size_t out_size)
 {
-    size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("objects") + strlen(BC_PATH_SEP) + strlen(id) + strlen(".fson") + 1;
-    if (needed > out_size)
-        return -1;
     int n = snprintf(out, out_size, "%s%sobjects%s%s.fson",
                      db->root_path, BC_PATH_SEP, BC_PATH_SEP, id);
     if (n < 0 || (size_t)n >= out_size)
@@ -120,22 +123,20 @@ static int bc_entry_path(fossil_bluecrab_db *db, const char *id, char *out, size
 
 static int bc_relations_path(fossil_bluecrab_db *db, char *out, size_t out_size)
 {
-    size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("relations.fson") + 1;
-    if (needed > out_size)
+    int n = snprintf(out, out_size, "%s%srelations.fson",
+                     db->root_path, BC_PATH_SEP);
+    if (n < 0 || (size_t)n >= out_size)
         return -1;
-    snprintf(out, out_size, "%s%srelations.fson",
-             db->root_path, BC_PATH_SEP);
     out[out_size - 1] = '\0';
     return 0;
 }
 
 static int bc_commits_path(fossil_bluecrab_db *db, char *out, size_t out_size)
 {
-    size_t needed = strlen(db->root_path) + strlen(BC_PATH_SEP) + strlen("commits") + 1;
-    if (needed > out_size)
+    int n = snprintf(out, out_size, "%s%scommits",
+                     db->root_path, BC_PATH_SEP);
+    if (n < 0 || (size_t)n >= out_size)
         return -1;
-    snprintf(out, out_size, "%s%scommits",
-             db->root_path, BC_PATH_SEP);
     out[out_size - 1] = '\0';
     return 0;
 }
