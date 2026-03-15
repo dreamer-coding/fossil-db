@@ -275,7 +275,7 @@ FOSSIL_TEST(c_test_bluecrab_multiple_entries_and_bulk_crud)
         ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, ids[i], fsons[i]) == 0);
         ASSUME_ITS_TRUE(fossil_db_bluecrab_get(&db, ids[i], &out) == 0);
         ASSUME_NOT_CNULL(out);
-        ASSUME_ITS_CSTR_CONTAINS(out, ids[i][0] == 'i' ? "object" : "");
+        ASSUME_ITS_CSTR_CONTAINS(out, "object");
         free(out);
     }
 
@@ -370,18 +370,18 @@ FOSSIL_TEST(c_test_bluecrab_search_no_results_and_empty_db)
 
     // Search in empty DB
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "field", "value", &results, &count) == 0);
-    ASSUME_ITS_SIZE(count, 0);
+    ASSUME_ITS_EQUAL_SIZE(count, 0);
     free(results);
 
     // Insert unrelated entry
     fossil_db_bluecrab_insert(&db, "foo", "object: { name: cstr:\"bar\" }");
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "name", "baz", &results, &count) == 0);
-    ASSUME_ITS_SIZE(count, 0);
+    ASSUME_ITS_EQUAL_SIZE(count, 0);
     free(results);
 
     // Fuzzy search with no match
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "notfound", &results, &count) == 0);
-    ASSUME_ITS_SIZE(count, 0);
+    ASSUME_ITS_EQUAL_SIZE(count, 0);
     free(results);
 
     fossil_db_bluecrab_close(&db);
@@ -424,7 +424,7 @@ FOSSIL_TEST(c_test_bluecrab_hash_consistency)
     // Hash again, should be the same
     char hash2[FOSSIL_BLUECRAB_HASH_SIZE];
     ASSUME_ITS_TRUE(fossil_db_bluecrab_hash_entry(data1, hash2) == 0);
-    ASSUME_ITS_CSTR_EQUALS(hash1, hash2);
+    ASSUME_ITS_EQUAL_CSTR(hash1, hash2);
     free(data1);
 
     fossil_db_bluecrab_close(&db);
@@ -563,7 +563,8 @@ FOSSIL_TEST(c_test_bluecrab_similarity_and_ranking)
     float sim1 = fossil_db_bluecrab_similarity("Alpha", "Alpha");
     float sim2 = fossil_db_bluecrab_similarity("Alpha", "Alfa");
     float sim3 = fossil_db_bluecrab_similarity("Alpha", "Beta");
-    ASSUME_ITS_TRUE(sim1 > sim2 && sim2 > sim3);
+    ASSUME_ITS_MORE_THAN_F32(sim1, sim2);
+    ASSUME_ITS_MORE_THAN_F32(sim2, sim3);
 
     fossil_bluecrab_search_result results[3] = {
         {.id = "A", .score = sim1},
@@ -571,9 +572,9 @@ FOSSIL_TEST(c_test_bluecrab_similarity_and_ranking)
         {.id = "C", .score = sim3}
     };
     ASSUME_ITS_TRUE(fossil_db_bluecrab_rank_results(results, 3) == 0);
-    ASSUME_ITS_CSTR_EQUALS(results[0].id, "A");
-    ASSUME_ITS_CSTR_EQUALS(results[1].id, "B");
-    ASSUME_ITS_CSTR_EQUALS(results[2].id, "C");
+    ASSUME_ITS_EQUAL_CSTR(results[0].id, "A");
+    ASSUME_ITS_EQUAL_CSTR(results[1].id, "B");
+    ASSUME_ITS_EQUAL_CSTR(results[2].id, "C");
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * *
