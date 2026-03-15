@@ -64,9 +64,11 @@ static void bc_timestamp(char *buf, size_t size)
 static int bc_join(char *out, size_t out_size, const char *a, const char *b)
 {
     size_t needed = strlen(a) + strlen(BC_PATH_SEP) + strlen(b) + 1;
-    if (needed > out_size)
+    if (needed >= out_size)
         return -1;
-    snprintf(out, out_size, "%s%s%s", a, BC_PATH_SEP, b);
+    int n = snprintf(out, out_size, "%s%s%s", a, BC_PATH_SEP, b);
+    if (n < 0 || (size_t)n >= out_size)
+        return -1;
     out[out_size - 1] = '\0';
     return 0;
 }
