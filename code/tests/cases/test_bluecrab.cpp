@@ -247,9 +247,9 @@ FOSSIL_TEST(cpp_test_bluecrab_class_similarity_and_ranking)
     ASSUME_ITS_MORE_THAN_F32(sim2, sim3);
 
     std::vector<fossil_bluecrab_search_result> results = {
-        {.id = "A", .score = sim1},
-        {.id = "B", .score = sim2},
-        {.id = "C", .score = sim3}
+        { "A", sim1, "", "", 0 },
+        { "B", sim2, "", "", 0 },
+        { "C", sim3, "", "", 0 }
     };
     BlueCrab::rank_results(results);
     ASSUME_ITS_EQUAL_CSTR(results[0].id, "A");
