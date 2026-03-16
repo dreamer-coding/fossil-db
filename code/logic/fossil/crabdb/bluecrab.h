@@ -510,7 +510,6 @@ int fossil_db_bluecrab_verify(
 }
 #include <string>
 #include <vector>
-#include <stdexcept>
 
 namespace fossil::db
 {
@@ -521,292 +520,186 @@ namespace fossil::db
     ------------------------------------------------------------
     */
 
-    class BlueCrab
+    class BlueCrab 
     {
-    private:
-        fossil_bluecrab_db db{};
-        bool opened = false;
-
     public:
-        /*
-        ------------------------------------------------------------
-        Lifecycle
-        ------------------------------------------------------------
-        */
+        BlueCrab() : db_{} {}
 
-        BlueCrab() = default;
-
-        BlueCrab(const std::string &path)
-        {
-            open(path);
-        }
-
-        ~BlueCrab()
-        {
-            if (opened)
-                close();
-        }
-
-        static void create(const std::string &path, const std::string &name)
-        {
-            if (path.empty() || name.empty())
-            throw std::invalid_argument("Database path and name must not be empty");
-            if (fossil_db_bluecrab_create(path.c_str(), name.c_str()) != 0)
-            throw std::runtime_error("bluecrab create failed: could not create database at path '" + path + "' with name '" + name + "'");
-        }
-
-        static void remove_db(const std::string &path)
-        {
-            if (fossil_db_bluecrab_delete(path.c_str()) != 0)
-            throw std::runtime_error("bluecrab delete failed");
-        }
-
-        void open(const std::string &path)
-        {
-            if (fossil_db_bluecrab_open(&db, path.c_str()) != 0)
-            throw std::runtime_error("bluecrab open failed");
-            opened = true;
-        }
-
-        void close()
-        {
-            if (opened)
-            {
-            if (fossil_db_bluecrab_close(&db) != 0)
-                throw std::runtime_error("bluecrab close failed");
-            opened = false;
+        ~BlueCrab() {
+            if (db_.opened) {
+                fossil_db_bluecrab_close(&db_);
             }
         }
 
-        /*
-        ------------------------------------------------------------
-        CRUD
-        ------------------------------------------------------------
-        */
-
-        void insert(const std::string &id, const std::string &fson)
-        {
-            if (fossil_db_bluecrab_insert(&db, id.c_str(), fson.c_str()) != 0)
-            throw std::runtime_error("insert failed");
+        // Create a new database (static, does not open)
+        static int create(const std::string& path, const std::string& name) {
+            return fossil_db_bluecrab_create(path.c_str(), name.c_str());
         }
 
-        std::string get(const std::string &id)
-        {
-            char *result = nullptr;
-            if (fossil_db_bluecrab_get(&db, id.c_str(), &result) != 0)
-            throw std::runtime_error("get failed");
-            std::string out = result;
-            free(result);
-            return out;
+        // Delete a database (static)
+        static int remove(const std::string& path) {
+            return fossil_db_bluecrab_delete(path.c_str());
         }
 
-        void update(const std::string &id, const std::string &fson)
-        {
-            if (fossil_db_bluecrab_update(&db, id.c_str(), fson.c_str()) != 0)
-            throw std::runtime_error("update failed");
+        // Open an existing database
+        int open(const std::string& path) {
+            int rc = fossil_db_bluecrab_open(&db_, path.c_str());
+            return rc;
         }
 
-        void remove(const std::string &id)
-        {
-            if (fossil_db_bluecrab_remove(&db, id.c_str()) != 0)
-            throw std::runtime_error("remove failed");
+        // Close the database
+        int close() {
+            int rc = fossil_db_bluecrab_close(&db_);
+            return rc;
         }
 
-        /*
-        ------------------------------------------------------------
-        Sub Entries
-        ------------------------------------------------------------
-        */
-
-        void insert_sub(const std::string &parent, const std::string &sub_id, const std::string &fson)
-        {
-            if (fossil_db_bluecrab_insert_sub(&db, parent.c_str(), sub_id.c_str(), fson.c_str()) != 0)
-            throw std::runtime_error("insert_sub failed");
+        // Insert entry
+        int insert(const std::string& id, const std::string& fson_data) {
+            return fossil_db_bluecrab_insert(&db_, id.c_str(), fson_data.c_str());
         }
 
-        std::string get_sub(const std::string &parent, const std::string &sub_id)
-        {
-            char *result = nullptr;
-            if (fossil_db_bluecrab_get_sub(&db, parent.c_str(), sub_id.c_str(), &result) != 0)
-            throw std::runtime_error("get_sub failed");
-            std::string out = result;
-            free(result);
-            return out;
-        }
-
-        /*
-        ------------------------------------------------------------
-        Relationships
-        ------------------------------------------------------------
-        */
-
-        void link(const std::string &source, const std::string &target, const std::string &relation)
-        {
-            if (fossil_db_bluecrab_link(&db, source.c_str(), target.c_str(), relation.c_str()) != 0)
-            throw std::runtime_error("link failed");
-        }
-
-        void unlink(const std::string &source, const std::string &target)
-        {
-            if (fossil_db_bluecrab_unlink(&db, source.c_str(), target.c_str()) != 0)
-            throw std::runtime_error("unlink failed");
-        }
-
-        std::vector<fossil_bluecrab_relation> get_relations(const std::string &id)
-        {
-            fossil_bluecrab_relation *relations = nullptr;
-            size_t count = 0;
-            if (fossil_db_bluecrab_get_relations(&db, id.c_str(), &relations, &count) != 0)
-            throw std::runtime_error("get_relations failed");
-            std::vector<fossil_bluecrab_relation> vec(relations, relations + count);
-            free(relations);
-            return vec;
-        }
-
-        /*
-        ------------------------------------------------------------
-        Search
-        ------------------------------------------------------------
-        */
-
-        std::vector<fossil_bluecrab_search_result> search_exact(const std::string &field, const std::string &value)
-        {
-            fossil_bluecrab_search_result *results = nullptr;
-            size_t count = 0;
-            if (fossil_db_bluecrab_search_exact(&db, field.c_str(), value.c_str(), &results, &count) != 0)
-            throw std::runtime_error("search_exact failed");
-            std::vector<fossil_bluecrab_search_result> vec(results, results + count);
-            free(results);
-            return vec;
-        }
-
-        std::vector<fossil_bluecrab_search_result> search_fuzzy(const std::string &query)
-        {
-            fossil_bluecrab_search_result *results = nullptr;
-            size_t count = 0;
-            if (fossil_db_bluecrab_search_fuzzy(&db, query.c_str(), &results, &count) != 0)
-            throw std::runtime_error("search_fuzzy failed");
-            std::vector<fossil_bluecrab_search_result> vec(results, results + count);
-            free(results);
-            return vec;
-        }
-
-        /*
-        ------------------------------------------------------------
-        AI Smart Search Helpers
-        ------------------------------------------------------------
-        */
-
-        static float similarity(const std::string &a, const std::string &b)
-        {
-            return fossil_db_bluecrab_similarity(a.c_str(), b.c_str());
-        }
-
-        static void rank_results(std::vector<fossil_bluecrab_search_result> &results)
-        {
-            if (!results.empty())
-            {
-            if (fossil_db_bluecrab_rank_results(results.data(), results.size()) != 0)
-                throw std::runtime_error("rank_results failed");
+        // Get entry
+        int get(const std::string& id, std::string& out_fson) {
+            char* fson = nullptr;
+            int rc = fossil_db_bluecrab_get(&db_, id.c_str(), &fson);
+            if (rc == 0 && fson) {
+                out_fson = fson;
+                free(fson);
             }
+            return rc;
         }
 
-        /*
-        ------------------------------------------------------------
-        Hash + Integrity
-        ------------------------------------------------------------
-        */
-
-        std::string hash_entry(const std::string &data)
-        {
-            char hash[FOSSIL_BLUECRAB_HASH_SIZE] = {};
-            if (fossil_db_bluecrab_hash_entry(data.c_str(), hash) != 0)
-            throw std::runtime_error("hash_entry failed");
-            return std::string(hash);
+        // Update entry
+        int update(const std::string& id, const std::string& fson_data) {
+            return fossil_db_bluecrab_update(&db_, id.c_str(), fson_data.c_str());
         }
 
-        bool verify_entry(const std::string &id)
-        {
-            return fossil_db_bluecrab_verify_entry(&db, id.c_str()) == 0;
+        // Remove entry
+        int remove_entry(const std::string& id) {
+            return fossil_db_bluecrab_remove(&db_, id.c_str());
         }
 
-        /*
-        ------------------------------------------------------------
-        Git Hybrid
-        ------------------------------------------------------------
-        */
-
-        void commit(const std::string &message)
-        {
-            if (fossil_db_bluecrab_commit(&db, message.c_str()) != 0)
-            throw std::runtime_error("commit failed");
+        // Insert sub-entry
+        int insert_sub(const std::string& parent_id, const std::string& sub_id, const std::string& fson_data) {
+            return fossil_db_bluecrab_insert_sub(&db_, parent_id.c_str(), sub_id.c_str(), fson_data.c_str());
         }
 
-        void log()
-        {
-            if (fossil_db_bluecrab_log(&db) != 0)
-            throw std::runtime_error("log failed");
+        // Get sub-entry
+        int get_sub(const std::string& parent_id, const std::string& sub_id, std::string& out_fson) {
+            char* fson = nullptr;
+            int rc = fossil_db_bluecrab_get_sub(&db_, parent_id.c_str(), sub_id.c_str(), &fson);
+            if (rc == 0 && fson) {
+                out_fson = fson;
+                free(fson);
+            }
+            return rc;
         }
 
-        void checkout(const std::string &version)
-        {
-            if (fossil_db_bluecrab_checkout(&db, version.c_str()) != 0)
-            throw std::runtime_error("checkout failed");
+        // Link entries
+        int link(const std::string& source_id, const std::string& target_id, const std::string& relation) {
+            return fossil_db_bluecrab_link(&db_, source_id.c_str(), target_id.c_str(), relation.c_str());
         }
 
-        /*
-        ------------------------------------------------------------
-        Meta Tree Operations
-        ------------------------------------------------------------
-        */
-
-        void meta_load()
-        {
-            if (fossil_db_bluecrab_meta_load(&db) != 0)
-            throw std::runtime_error("meta_load failed");
+        // Unlink entries
+        int unlink(const std::string& source_id, const std::string& target_id) {
+            return fossil_db_bluecrab_unlink(&db_, source_id.c_str(), target_id.c_str());
         }
 
-        void meta_save()
-        {
-            if (fossil_db_bluecrab_meta_save(&db) != 0)
-            throw std::runtime_error("meta_save failed");
+        // Get relations
+        int get_relations(const std::string& id, std::vector<fossil_bluecrab_relation>& out_relations) {
+            fossil_bluecrab_relation* rels = nullptr;
+            size_t count = 0;
+            int rc = fossil_db_bluecrab_get_relations(&db_, id.c_str(), &rels, &count);
+            if (rc == 0 && rels) {
+                out_relations.assign(rels, rels + count);
+                free(rels);
+            }
+            return rc;
         }
 
-        void meta_rebuild()
-        {
-            if (fossil_db_bluecrab_meta_rebuild(&db) != 0)
-            throw std::runtime_error("meta_rebuild failed");
+        // Exact search
+        int search_exact(const std::string& field, const std::string& value, std::vector<fossil_bluecrab_search_result>& results) {
+            fossil_bluecrab_search_result* arr = nullptr;
+            size_t count = 0;
+            int rc = fossil_db_bluecrab_search_exact(&db_, field.c_str(), value.c_str(), &arr, &count);
+            if (rc == 0 && arr) {
+                results.assign(arr, arr + count);
+                free(arr);
+            }
+            return rc;
         }
 
-        /*
-        ------------------------------------------------------------
-        Advanced Database Operations
-        ------------------------------------------------------------
-        */
-
-        void backup(const std::string &backup_path)
-        {
-            if (fossil_db_bluecrab_backup(&db, backup_path.c_str()) != 0)
-            throw std::runtime_error("backup failed");
+        // Fuzzy search
+        int search_fuzzy(const std::string& query, std::vector<fossil_bluecrab_search_result>& results) {
+            fossil_bluecrab_search_result* arr = nullptr;
+            size_t count = 0;
+            int rc = fossil_db_bluecrab_search_fuzzy(&db_, query.c_str(), &arr, &count);
+            if (rc == 0 && arr) {
+                results.assign(arr, arr + count);
+                free(arr);
+            }
+            return rc;
         }
 
-        void restore(const std::string &path)
-        {
-            if (fossil_db_bluecrab_restore(&db, path.c_str()) != 0)
-            throw std::runtime_error("restore failed");
+        // Commit
+        int commit(const std::string& message) {
+            return fossil_db_bluecrab_commit(&db_, message.c_str());
         }
 
-        void compact()
-        {
-            if (fossil_db_bluecrab_compact(&db) != 0)
-            throw std::runtime_error("compact failed");
+        // Log
+        int log() {
+            return fossil_db_bluecrab_log(&db_);
         }
 
-        void verify()
-        {
-            if (fossil_db_bluecrab_verify(&db) != 0)
-            throw std::runtime_error("verify failed");
+        // Checkout
+        int checkout(const std::string& version) {
+            return fossil_db_bluecrab_checkout(&db_, version.c_str());
         }
+
+        // Meta operations
+        int meta_load() { return fossil_db_bluecrab_meta_load(&db_); }
+        int meta_save() { return fossil_db_bluecrab_meta_save(&db_); }
+        int meta_rebuild() { return fossil_db_bluecrab_meta_rebuild(&db_); }
+
+        // Backup/restore
+        int backup(const std::string& backup_path) {
+            return fossil_db_bluecrab_backup(&db_, backup_path.c_str());
+        }
+        int restore(const std::string& backup_path) {
+            return fossil_db_bluecrab_restore(&db_, backup_path.c_str());
+        }
+
+        // Compact
+        int compact() { return fossil_db_bluecrab_compact(&db_); }
+
+        // Verify
+        int verify() { return fossil_db_bluecrab_verify(&db_); }
+
+        // Access to last error
+        std::string last_error() const { return db_.last_error; }
+
+        // Access to db name
+        std::string name() const { return db_.name; }
+
+        // Is opened
+        bool is_opened() const { return db_.opened; }
+
+        // Entry count
+        size_t entry_count() const { return db_.entry_count; }
+
+        // Relation count
+        size_t relation_count() const { return db_.relation_count; }
+
+        // Last commit version/hash
+        uint64_t last_commit_version() const { return db_.last_commit_version; }
+        std::string last_commit_hash() const { return db_.last_commit_hash; }
+
+        // Underlying C struct access (if needed)
+        fossil_bluecrab_db* native_handle() { return &db_; }
+        const fossil_bluecrab_db* native_handle() const { return &db_; }
+
+    private:
+        fossil_bluecrab_db db_;
     };
 
 }
