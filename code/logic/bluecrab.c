@@ -605,7 +605,13 @@ int fossil_db_bluecrab_search_exact(
         return -1;
 
     fossil_bluecrab_search_result *list = NULL;
-    size_t used = 0;
+    size_t used = 0, cap = 16;
+
+    list = malloc(sizeof(*list) * cap);
+    if (!list) {
+        closedir(d);
+        return -1;
+    }
 
     struct dirent *ent;
     while ((ent = readdir(d)))
@@ -621,28 +627,53 @@ int fossil_db_bluecrab_search_exact(
         if (!data)
             continue;
 
-        // crude field:value search: look for 'field: ... value ...'
+        // Look for 'field: type:"value"' or 'field: type:value'
         char search_pattern[128];
         snprintf(search_pattern, sizeof(search_pattern), "%s:", field);
         char *field_pos = strstr(data, search_pattern);
         int match = 0;
         if (field_pos)
         {
-            // Move past 'field:'
             field_pos += strlen(search_pattern);
-            // Skip whitespace
             while (*field_pos == ' ' || *field_pos == '\t')
                 field_pos++;
-            // Now check if value matches (as substring)
-            if (strncmp(field_pos, value, strlen(value)) == 0)
-                match = 1;
-            else if (strstr(field_pos, value) == field_pos)
-                match = 1;
+            // Accept quoted or unquoted value
+            if (*field_pos == 'c' && strncmp(field_pos, "cstr:", 5) == 0) {
+                field_pos += 5;
+                while (*field_pos == ' ' || *field_pos == '\t')
+                    field_pos++;
+                if (*field_pos == '"') {
+                    field_pos++;
+                    size_t vlen = strlen(value);
+                    if (strncmp(field_pos, value, vlen) == 0 && field_pos[vlen] == '"')
+                        match = 1;
+                }
+            } else if (*field_pos == '"') {
+                field_pos++;
+                size_t vlen = strlen(value);
+                if (strncmp(field_pos, value, vlen) == 0 && field_pos[vlen] == '"')
+                    match = 1;
+            } else {
+                size_t vlen = strlen(value);
+                if (strncmp(field_pos, value, vlen) == 0 &&
+                    (field_pos[vlen] == '\0' || field_pos[vlen] == ',' || field_pos[vlen] == ' ' || field_pos[vlen] == '\n'))
+                    match = 1;
+            }
         }
 
         if (match)
         {
-            list = realloc(list, sizeof(*list) * (used + 1));
+            if (used == cap) {
+                cap *= 2;
+                fossil_bluecrab_search_result *tmp = realloc(list, sizeof(*list) * cap);
+                if (!tmp) {
+                    free(data);
+                    free(list);
+                    closedir(d);
+                    return -1;
+                }
+                list = tmp;
+            }
             strncpy(list[used].id, ent->d_name, FOSSIL_BLUECRAB_MAX_ID - 1);
             list[used].id[FOSSIL_BLUECRAB_MAX_ID - 1] = '\0';
             list[used].score = 1.0f;
