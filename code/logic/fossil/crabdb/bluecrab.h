@@ -549,8 +549,10 @@ namespace fossil::db
 
         static void create(const std::string &path, const std::string &name)
         {
+            if (path.empty() || name.empty())
+                throw std::invalid_argument("Database path and name must not be empty");
             if (fossil_db_bluecrab_create(path.c_str(), name.c_str()) != 0)
-                throw std::runtime_error("bluecrab create failed");
+                throw std::runtime_error("bluecrab create failed: could not create database at path '" + path + "' with name '" + name + "'");
         }
 
         static void remove_db(const std::string &path)
