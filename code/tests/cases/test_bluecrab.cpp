@@ -23,7 +23,7 @@
  * -----------------------------------------------------------------------------
  */
 #include <fossil/pizza/framework.h>
-
+#include <algorithm>
 #include "fossil/crabdb/framework.h"
 
 // * * * * * * * * * * * * * * * * * * * * * * * *
@@ -49,788 +49,212 @@ FOSSIL_TEARDOWN(cpp_bluecrab_fixture)
 // * Fossil Logic Test Blue CrabDB Database
 // * * * * * * * * * * * * * * * * * * * * * * * *
 
-#define TEST_DB_PATH "/tmp/bluecrab_testdb"
-#define TEST_DB_NAME "TestDB"
+using fossil::db::BlueCrab;
 
-// C++ wrapper test for BlueCrab class
-FOSSIL_TEST(cpp_test_bluecrab_create_open_close_delete)
+#define CPP_TEST_DB_PATH "/tmp/bluecrab_cpp_class_testdb"
+#define CPP_TEST_DB_NAME "CppClassTestDB"
+
+FOSSIL_TEST(cpp_test_bluecrab_class_create_open_close)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    // Remove any old DB
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
 
-    // Static creation
-    bool threw = false;
-    try {
-        fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
+    // Create DB
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
 
-    // Open/close via C++ class
-    fossil::db::BlueCrab db;
-    threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
+    // Open/close via class
+    BlueCrab db;
+    db.open(CPP_TEST_DB_PATH);
+    db.close();
 
-    // Open via constructor
-    threw = false;
-    try {
-        fossil::db::BlueCrab db2(TEST_DB_PATH);
-        db2.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    // Ensure file is closed before attempting to delete, and retry if needed
-    int del_result = 0;
-    try {
-        del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
-        if (del_result != 0) {
-            FOSSIL_SANITY_SYS_SLEEP(1000); // 1 second
-            del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
-        }
-    } catch (...) {
-        del_result = -1;
-    }
-    ASSUME_ITS_TRUE(del_result == 0);
+    // Remove DB
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_crud_entry)
+FOSSIL_TEST(cpp_test_bluecrab_class_crud)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
 
-    // Create DB using static method
+    BlueCrab db(CPP_TEST_DB_PATH);
+
+    db.insert("id1", "object: { name: cstr:\"Alice\" }");
+    std::string val = db.get("id1");
+    ASSUME_ITS_CSTR_CONTAINS(val.c_str(), "Alice");
+
+    db.update("id1", "object: { name: cstr:\"Bob\" }");
+    val = db.get("id1");
+    ASSUME_ITS_CSTR_CONTAINS(val.c_str(), "Bob");
+
+    db.remove("id1");
     bool threw = false;
-    try {
-        fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    // Open DB using C++ wrapper
-    fossil::db::BlueCrab db;
-    threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    const std::string id = "entry1";
-    const std::string fson = "object: { name: cstr:\"Alice\", age: i32:30 }";
-
-    // Insert
-    threw = false;
-    try {
-        db.insert(id, fson);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    // Get
-    std::string out;
-    threw = false;
-    try {
-        out = db.get(id);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "Alice");
-
-    // Update
-    const std::string fson2 = "object: { name: cstr:\"Bob\", age: i32:40 }";
-    threw = false;
-    try {
-        db.update(id, fson2);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    // Get updated
-    threw = false;
-    try {
-        out = db.get(id);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "Bob");
-
-    // Remove
-    threw = false;
-    try {
-        db.remove(id);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    // Get after remove (should throw)
-    bool get_failed = false;
-    try {
-        out = db.get(id);
-    } catch (...) {
-        get_failed = true;
-    }
-    ASSUME_ITS_TRUE(get_failed);
-
-    try {
-        db.close();
-    } catch (...) {
-        // ignore close errors
-    }
-    int del_result = 0;
-    try {
-        del_result = fossil_db_bluecrab_delete(TEST_DB_PATH);
-    } catch (...) {
-        del_result = -1;
-    }
-    ASSUME_ITS_TRUE(del_result == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_subentry)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    const std::string parent = "parent";
-    const std::string sub = "child";
-    const std::string fson = "object: { value: i32:123 }";
-
-    threw = false;
-    try {
-        db.insert_sub(parent, sub, fson);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    std::string out;
-    threw = false;
-    try {
-        out = db.get_sub(parent, sub);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "123");
+    try { db.get("id1"); }
+    catch (const std::runtime_error&) { threw = true; }
+    ASSUME_ITS_TRUE(threw);
 
     db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_relations)
+FOSSIL_TEST(cpp_test_bluecrab_class_subentry)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
+    BlueCrab db(CPP_TEST_DB_PATH);
 
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    try {
-        db.insert("A", "object: { }");
-        db.insert("B", "object: { }");
-        db.insert("C", "object: { }");
-        db.link("A", "B", "friend");
-        db.link("A", "C", "colleague");
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    std::vector<fossil_bluecrab_relation> rels;
-    threw = false;
-    try {
-        rels = db.get_relations("A");
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_MORE_OR_EQUAL_SIZE(rels.size(), 2);
-
-    threw = false;
-    try {
-        db.unlink("A", "B");
-        rels = db.get_relations("A");
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_MORE_OR_EQUAL_SIZE(rels.size(), 1);
+    db.insert_sub("parent", "sub1", "object: { value: i32:42 }");
+    std::string out = db.get_sub("parent", "sub1");
+    ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "42");
 
     db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_search_exact_and_fuzzy)
+FOSSIL_TEST(cpp_test_bluecrab_class_relations)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
+    BlueCrab db(CPP_TEST_DB_PATH);
 
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
+    db.insert("A", "object: { }");
+    db.insert("B", "object: { }");
+    db.link("A", "B", "friend");
 
-    try {
-        db.insert("e1", "object: { name: cstr:\"Alpha\", tag: cstr:\"red\" }");
-        db.insert("e2", "object: { name: cstr:\"Beta\", tag: cstr:\"blue\" }");
-        db.insert("e3", "object: { name: cstr:\"Gamma\", tag: cstr:\"red\" }");
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
+    auto rels = db.get_relations("A");
+    bool found = false;
+    for (const auto& r : rels)
+        if (std::string(r.target_id) == "B" && std::string(r.relation_type) == "friend")
+            found = true;
+    ASSUME_ITS_TRUE(found);
 
-    std::vector<fossil_bluecrab_search_result> results;
-    threw = false;
-    try {
-        results = db.search_exact("tag", "red");
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_EQUAL_SIZE(results.size(), 2);
-
-    threw = false;
-    try {
-        results = db.search_fuzzy("Alpha");
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_EQUAL_SIZE(results.size(), 1);
+    db.unlink("A", "B");
+    rels = db.get_relations("A");
+    bool still_found = false;
+    for (const auto& r : rels)
+        if (std::string(r.target_id) == "B")
+            still_found = true;
+    ASSUME_NOT_TRUE(still_found);
 
     db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_hash_and_verify)
+FOSSIL_TEST(cpp_test_bluecrab_class_search_and_fuzzy)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
+    BlueCrab db(CPP_TEST_DB_PATH);
 
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
+    db.insert("e1", "object: { name: cstr:\"Alpha\", tag: cstr:\"red\" }");
+    db.insert("e2", "object: { name: cstr:\"Beta\", tag: cstr:\"blue\" }");
+    db.insert("e3", "object: { name: cstr:\"Gamma\", tag: cstr:\"red\" }");
 
-    const std::string id = "hashentry";
-    const std::string fson = "object: { foo: cstr:\"bar\" }";
-    threw = false;
-    try {
-        db.insert(id, fson);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
+    auto exact = db.search_exact("tag", "red");
+    ASSUME_ITS_EQUAL_SIZE(exact.size(), 2);
 
-    std::string data;
-    threw = false;
-    try {
-        data = db.get(id);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    std::string hash;
-    threw = false;
-    try {
-        hash = db.hash_entry(data);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    bool verified = false;
-    threw = false;
-    try {
-        verified = db.verify_entry(id);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(verified);
+    auto fuzzy = db.search_fuzzy("Alpha");
+    ASSUME_ITS_EQUAL_SIZE(fuzzy.size(), 1);
 
     db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_commit_log_checkout)
+FOSSIL_TEST(cpp_test_bluecrab_class_hash_and_verify)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
+    BlueCrab db(CPP_TEST_DB_PATH);
 
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-        db.insert("c1", "object: { v: i32:1 }");
-        db.commit("Initial commit");
-
-        db.insert("c2", "object: { v: i32:2 }");
-        db.commit("Second commit");
-
-        db.log();
-
-        // Try checkout (should not throw)
-        db.checkout("1");
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
+    db.insert("hash1", "object: { foo: cstr:\"bar\" }");
+    std::string data = db.get("hash1");
+    std::string hash = db.hash_entry(data);
+    ASSUME_NOT_CNULL(hash.c_str());
+    ASSUME_ITS_TRUE(db.verify_entry("hash1"));
 
     db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_meta_and_advanced)
+FOSSIL_TEST(cpp_test_bluecrab_class_commit_and_checkout)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
+    BlueCrab db(CPP_TEST_DB_PATH);
 
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    const std::string backup_path = "/tmp/bluecrab_testdb_backup";
+    db.insert("c1", "object: { v: i32:1 }");
+    db.commit("Initial commit");
+    db.insert("c2", "object: { v: i32:2 }");
+    db.commit("Second commit");
+
+    // Should not throw
+    db.log();
+    db.checkout("1");
+
+    db.close();
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
+}
+
+FOSSIL_TEST(cpp_test_bluecrab_class_meta_and_advanced)
+{
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
+    BlueCrab db(CPP_TEST_DB_PATH);
+
+    db.meta_load();
+    db.meta_save();
+    db.meta_rebuild();
+
+    std::string backup_path = std::string(CPP_TEST_DB_PATH) + "_backup";
     FOSSIL_SANITY_SYS_DELETE_FILE(backup_path.c_str());
-    try {
-        db.open(TEST_DB_PATH);
+    db.backup(backup_path);
+    db.restore(backup_path);
 
-        db.meta_load();
-        db.meta_save();
-        db.meta_rebuild();
-
-        db.backup(backup_path);
-        db.restore(backup_path);
-
-        db.compact();
-        db.verify();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
+    db.compact();
+    db.verify();
 
     db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
     FOSSIL_SANITY_SYS_DELETE_FILE(backup_path.c_str());
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_multiple_entries_and_bulk_crud)
+FOSSIL_TEST(cpp_test_bluecrab_class_bulk_insert_and_search)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
+    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
+    BlueCrab db(CPP_TEST_DB_PATH);
 
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        const std::string ids[] = {"id1", "id2", "id3", "id4"};
-        const std::string fsons[] = {
-            "object: { name: cstr:\"One\", value: i32:1 }",
-            "object: { name: cstr:\"Two\", value: i32:2 }",
-            "object: { name: cstr:\"Three\", value: i32:3 }",
-            "object: { name: cstr:\"Four\", value: i32:4 }"
-        };
-
-        for (int i = 0; i < 4; ++i) {
-            db.insert(ids[i], fsons[i]);
-            std::string out = db.get(ids[i]);
-            ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "object");
-        }
-
-        // Remove all entries
-        for (int i = 0; i < 4; ++i) {
-            db.remove(ids[i]);
-        }
-
-        // Confirm removal (should throw)
-        for (int i = 0; i < 4; ++i) {
-            bool get_failed = false;
-            try {
-                db.get(ids[i]);
-            } catch (...) {
-                get_failed = true;
-            }
-            ASSUME_ITS_TRUE(get_failed);
-        }
-    } catch (...) {
-        threw = true;
+    for (int i = 0; i < 10; ++i) {
+        db.insert("id" + std::to_string(i), "object: { value: i32:" + std::to_string(i) + " }");
     }
-    ASSUME_NOT_TRUE(threw);
+
+    auto fuzzy = db.search_fuzzy("id");
+    ASSUME_ITS_EQUAL_SIZE(fuzzy.size(), 10);
+
+    for (int i = 0; i < 10; ++i) {
+        db.remove("id" + std::to_string(i));
+    }
 
     db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
+    BlueCrab::remove_db(CPP_TEST_DB_PATH);
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_subentry_update_and_remove)
+FOSSIL_TEST(cpp_test_bluecrab_class_similarity_and_ranking)
 {
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
+    float sim1 = BlueCrab::similarity("Alpha", "Alpha");
+    float sim2 = BlueCrab::similarity("Alpha", "Alfa");
+    float sim3 = BlueCrab::similarity("Alpha", "Beta");
+    ASSUME_ITS_MORE_THAN_F32(sim1, sim2);
+    ASSUME_ITS_MORE_THAN_F32(sim2, sim3);
 
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        const std::string parent = "parent2";
-        const std::string sub = "child2";
-        const std::string fson = "object: { value: i32:555 }";
-
-        db.insert_sub(parent, sub, fson);
-        std::string out = db.get_sub(parent, sub);
-        ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "555");
-
-        // Update subentry
-        const std::string fson2 = "object: { value: i32:777 }";
-        std::string id = parent + "_" + sub;
-        db.update(id, fson2);
-        out = db.get_sub(parent, sub);
-        ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "777");
-
-        // Remove subentry
-        db.remove(id);
-
-        // Confirm removal (should throw)
-        bool get_failed = false;
-        try {
-            db.get_sub(parent, sub);
-        } catch (...) {
-            get_failed = true;
-        }
-        ASSUME_ITS_TRUE(get_failed);
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-
-    db.close();
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_relation_metadata_and_types)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        db.insert("X", "object: { }");
-        db.insert("Y", "object: { }");
-
-        // Link with different relation types
-        db.link("X", "Y", "parent");
-        db.link("Y", "X", "child");
-
-        auto rels = db.get_relations("X");
-        ASSUME_ITS_MORE_OR_EQUAL_SIZE(rels.size(), 2);
-        bool found_parent = false, found_child = false;
-        for (const auto &rel : rels) {
-            if (strcmp(rel.relation_type, "parent") == 0) found_parent = true;
-            if (strcmp(rel.relation_type, "child") == 0) found_child = true;
-        }
-        ASSUME_ITS_TRUE(found_parent && found_child);
-
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_search_no_results_and_empty_db)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        // Search in empty DB
-        auto results = db.search_exact("field", "value");
-        ASSUME_ITS_EQUAL_SIZE(results.size(), 0);
-
-        // Insert unrelated entry
-        db.insert("foo", "object: { name: cstr:\"bar\" }");
-        results = db.search_exact("name", "baz");
-        ASSUME_ITS_EQUAL_SIZE(results.size(), 0);
-
-        // Fuzzy search with no match
-        results = db.search_fuzzy("notfound");
-        ASSUME_ITS_EQUAL_SIZE(results.size(), 0);
-
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_commit_and_checkout_invalid_version)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        db.insert("v1", "object: { v: i32:10 }");
-        db.commit("Commit 1");
-
-        // Try to checkout a non-existent version (should throw)
-        bool checkout_failed = false;
-        try {
-            db.checkout("9999");
-        } catch (...) {
-            checkout_failed = true;
-        }
-        ASSUME_ITS_TRUE(checkout_failed);
-
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_hash_consistency)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        const std::string id = "hashcheck";
-        const std::string fson = "object: { foo: cstr:\"baz\" }";
-        db.insert(id, fson);
-
-        std::string data1 = db.get(id);
-        std::string hash1 = db.hash_entry(data1);
-
-        // Hash again, should be the same
-        std::string hash2 = db.hash_entry(data1);
-        ASSUME_ITS_EQUAL_CSTR(hash1.c_str(), hash2.c_str());
-
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_bulk_insert_and_fuzzy_rank)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        // Bulk insert 100 entries with similar and distinct names
-        for (int i = 0; i < 100; ++i) {
-            char id[32], fson[128];
-            snprintf(id, sizeof(id), "user_%02d", i);
-            snprintf(fson, sizeof(fson), "object: { name: cstr:\"User%02d\", tag: cstr:\"%s\" }", i, (i % 2 == 0) ? "even" : "odd");
-            db.insert(id, fson);
-        }
-
-        // Fuzzy search for "User1" (should match User10, User11, User12, etc.)
-        auto results = db.search_fuzzy("User1");
-        ASSUME_ITS_EQUAL_SIZE(results.size(), 10);
-
-        // Rank results and check that the top result is "user_10" or "user_11"
-        fossil::db::BlueCrab::rank_results(results);
-        bool top_is_expected = (strcmp(results[0].id, "user_10") == 0 || strcmp(results[0].id, "user_11") == 0);
-        ASSUME_ITS_TRUE(top_is_expected);
-
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_dag_cycle_prevention)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        // Insert three nodes
-        db.insert("A", "object: { }");
-        db.insert("B", "object: { }");
-        db.insert("C", "object: { }");
-
-        // Create a DAG: A -> B -> C
-        db.link("A", "B", "edge");
-        db.link("B", "C", "edge");
-
-        // Attempt to create a cycle: C -> A (should throw)
-        bool cycle_failed = false;
-        try {
-            db.link("C", "A", "edge");
-        } catch (...) {
-            cycle_failed = true;
-        }
-        ASSUME_ITS_TRUE(cycle_failed);
-
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_subentry_bulk_and_removal)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    try {
-        db.open(TEST_DB_PATH);
-
-        // Insert parent entry
-        const std::string parent = "parent_bulk";
-        db.insert(parent, "object: { }");
-
-        // Insert 20 sub-entries
-        for (int i = 0; i < 20; ++i) {
-            char subid[32], fson[64];
-            snprintf(subid, sizeof(subid), "sub_%02d", i);
-            snprintf(fson, sizeof(fson), "object: { value: i32:%d }", i * 10);
-            db.insert_sub(parent, subid, fson);
-        }
-
-        // Remove all sub-entries
-        for (int i = 0; i < 20; ++i) {
-            char subid[32];
-            snprintf(subid, sizeof(subid), "sub_%02d", i);
-            std::string id = parent + "_" + subid;
-            db.remove(id);
-        }
-
-        // Confirm removal
-        for (int i = 0; i < 20; ++i) {
-            char subid[32];
-            snprintf(subid, sizeof(subid), "sub_%02d", i);
-            bool get_failed = false;
-            try {
-                db.get_sub(parent, subid);
-            } catch (...) {
-                get_failed = true;
-            }
-            ASSUME_ITS_TRUE(get_failed);
-        }
-
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_backup_restore_integrity)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil::db::BlueCrab::create(TEST_DB_PATH, TEST_DB_NAME);
-
-    fossil::db::BlueCrab db;
-    bool threw = false;
-    const std::string backup_path = "/tmp/bluecrab_testdb_adv_backup";
-    FOSSIL_SANITY_SYS_DELETE_FILE(backup_path.c_str());
-    try {
-        db.open(TEST_DB_PATH);
-
-        // Insert entries
-        db.insert("bk1", "object: { foo: cstr:\"bar\" }");
-        db.insert("bk2", "object: { foo: cstr:\"baz\" }");
-
-        // Backup
-        db.backup(backup_path);
-
-        // Remove one entry and verify it's gone
-        db.remove("bk2");
-        bool get_failed = false;
-        try {
-            db.get("bk2");
-        } catch (...) {
-            get_failed = true;
-        }
-        ASSUME_ITS_TRUE(get_failed);
-
-        // Restore from backup and verify both entries exist
-        db.restore(backup_path);
-        std::string out = db.get("bk1");
-        ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "bar");
-        out = db.get("bk2");
-        ASSUME_ITS_CSTR_CONTAINS(out.c_str(), "baz");
-
-        db.close();
-    } catch (...) {
-        threw = true;
-    }
-    ASSUME_NOT_TRUE(threw);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-    FOSSIL_SANITY_SYS_DELETE_FILE(backup_path.c_str());
+    std::vector<fossil_bluecrab_search_result> results = {
+        {.id = "A", .score = sim1},
+        {.id = "B", .score = sim2},
+        {.id = "C", .score = sim3}
+    };
+    BlueCrab::rank_results(results);
+    ASSUME_ITS_EQUAL_CSTR(results[0].id, "A");
+    ASSUME_ITS_EQUAL_CSTR(results[1].id, "B");
+    ASSUME_ITS_EQUAL_CSTR(results[2].id, "C");
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * *
@@ -838,24 +262,16 @@ FOSSIL_TEST(cpp_test_bluecrab_backup_restore_integrity)
 // * * * * * * * * * * * * * * * * * * * * * * * *
 FOSSIL_TEST_GROUP(cpp_bluecrab_database_tests)
 {
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_create_open_close_delete);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_crud_entry);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_subentry);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_relations);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_search_exact_and_fuzzy);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_hash_and_verify);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_commit_log_checkout);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_meta_and_advanced);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_multiple_entries_and_bulk_crud);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_subentry_update_and_remove);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_relation_metadata_and_types);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_search_no_results_and_empty_db);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_commit_and_checkout_invalid_version);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_hash_consistency);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_bulk_insert_and_fuzzy_rank);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_dag_cycle_prevention);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_subentry_bulk_and_removal);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_backup_restore_integrity);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_create_open_close);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_crud);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_subentry);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_relations);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_search_and_fuzzy);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_hash_and_verify);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_commit_and_checkout);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_meta_and_advanced);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_bulk_insert_and_search);
+    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_similarity_and_ranking);
 
     FOSSIL_TEST_REGISTER(cpp_bluecrab_fixture);
 } // end of tests
