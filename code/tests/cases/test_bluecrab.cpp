@@ -51,7 +51,7 @@ FOSSIL_TEARDOWN(cpp_bluecrab_fixture)
 
 using fossil::db::BlueCrab;
 
-#define CPP_TEST_DB_PATH "/tmp/bluecrab_cpp_class_testdb"
+#define CPP_TEST_DB_PATH "./bluecrab_cpp_class_testdb"
 #define CPP_TEST_DB_NAME "CppClassTestDB"
 
 FOSSIL_TEST(cpp_test_bluecrab_class_create_open_close)
