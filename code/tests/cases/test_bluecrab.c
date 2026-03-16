@@ -97,11 +97,7 @@ FOSSIL_TEST(c_test_bluecrab_crud_entry)
     ASSUME_ITS_CSTR_CONTAINS(out, "Bob");
     free(out);
 
-    int remove_result = fossil_db_bluecrab_remove(&db, id);
-    if (remove_result != 0) {
-        printf("Remove failed for id: %s, error: %d\n", id, remove_result);
-    }
-    ASSUME_ITS_TRUE(remove_result == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, id) == 0);
     ASSUME_NOT_TRUE(fossil_db_bluecrab_get(&db, id, &out) == 0);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
@@ -150,11 +146,7 @@ FOSSIL_TEST(c_test_bluecrab_relations)
     ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 2);
     free(rels);
 
-    int unlink_result = fossil_db_bluecrab_unlink(&db, "A", "B");
-    if (unlink_result != 0) {
-        printf("Unlink failed for A->B, error: %d\n", unlink_result);
-    }
-    ASSUME_ITS_TRUE(unlink_result == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_unlink(&db, "A", "B") == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_get_relations(&db, "A", &rels, &count) == 0);
     ASSUME_ITS_MORE_OR_EQUAL_SIZE(count, 1);
     free(rels);
@@ -293,11 +285,7 @@ FOSSIL_TEST(c_test_bluecrab_multiple_entries_and_bulk_crud)
 
     // Remove all entries
     for (int i = 0; i < 4; ++i) {
-        int remove_result = fossil_db_bluecrab_remove(&db, ids[i]);
-        if (remove_result != 0) {
-            printf("Remove failed for id: %s, error: %d\n", ids[i], remove_result);
-        }
-        ASSUME_ITS_TRUE(remove_result == 0);
+        ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, ids[i]) == 0);
     }
 
     // Confirm removal
@@ -337,11 +325,7 @@ FOSSIL_TEST(c_test_bluecrab_subentry_update_and_remove)
     free(out);
 
     // Remove subentry
-    int remove_result = fossil_db_bluecrab_remove(&db, id);
-    if (remove_result != 0) {
-        printf("Remove failed for subentry id: %s, error: %d\n", id, remove_result);
-    }
-    ASSUME_ITS_TRUE(remove_result == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, id) == 0);
     ASSUME_NOT_TRUE(fossil_db_bluecrab_get_sub(&db, parent, sub, &out) == 0);
 
     fossil_db_bluecrab_close(&db);
@@ -470,8 +454,7 @@ FOSSIL_TEST(c_test_bluecrab_bulk_insert_and_fuzzy_rank)
     fossil_bluecrab_search_result *results = NULL;
     size_t count = 0;
     ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "User1", &results, &count) == 0);
-    // Accept a range of matches due to fuzzy search implementation
-    ASSUME_ITS_TRUE(count >= 9 && count <= 11);
+    ASSUME_ITS_EQUAL_SIZE(count, 10);
 
     // Rank results and check that the top result is "user_10" or "user_11"
     ASSUME_ITS_TRUE(fossil_db_bluecrab_rank_results(results, count) == 0);
@@ -500,11 +483,7 @@ FOSSIL_TEST(c_test_bluecrab_dag_cycle_prevention)
     ASSUME_ITS_TRUE(fossil_db_bluecrab_link(&db, "B", "C", "edge") == 0);
 
     // Attempt to create a cycle: C -> A (should fail)
-    int link_result = fossil_db_bluecrab_link(&db, "C", "A", "edge");
-    if (link_result == 0) {
-        printf("Cycle prevention failed: C->A link was allowed!\n");
-    }
-    ASSUME_NOT_TRUE(link_result == 0);
+    ASSUME_NOT_TRUE(fossil_db_bluecrab_link(&db, "C", "A", "edge") == 0);
 
     ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
     ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
@@ -534,11 +513,7 @@ FOSSIL_TEST(c_test_bluecrab_subentry_bulk_and_removal)
         snprintf(subid, sizeof(subid), "sub_%02d", i);
         char fullid[FOSSIL_BLUECRAB_MAX_ID * 2];
         snprintf(fullid, sizeof(fullid), "%s_%s", parent, subid);
-        int remove_result = fossil_db_bluecrab_remove(&db, fullid);
-        if (remove_result != 0) {
-            printf("Remove failed for subentry id: %s, error: %d\n", fullid, remove_result);
-        }
-        ASSUME_ITS_TRUE(remove_result == 0);
+        ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, fullid) == 0);
     }
 
     // Confirm removal
@@ -569,11 +544,7 @@ FOSSIL_TEST(c_test_bluecrab_backup_restore_integrity)
     ASSUME_ITS_TRUE(fossil_db_bluecrab_backup(&db, backup_path) == 0);
 
     // Remove one entry and verify it's gone
-    int remove_result = fossil_db_bluecrab_remove(&db, "bk2");
-    if (remove_result != 0) {
-        printf("Remove failed for id: bk2, error: %d\n", remove_result);
-    }
-    ASSUME_ITS_TRUE(remove_result == 0);
+    ASSUME_ITS_TRUE(fossil_db_bluecrab_remove(&db, "bk2") == 0);
     char *out = NULL;
     ASSUME_NOT_TRUE(fossil_db_bluecrab_get(&db, "bk2", &out) == 0);
 

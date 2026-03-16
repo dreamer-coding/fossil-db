@@ -91,7 +91,7 @@ FOSSIL_TEST(cpp_test_bluecrab_class_crud)
     db.remove_entry("id1");
     bool threw = false;
     try { db.get("id1", val); }
-    catch (...) { threw = true; }
+    catch (const std::runtime_error&) { threw = true; }
     ASSUME_ITS_TRUE(threw);
 
     db.close();
@@ -162,8 +162,7 @@ FOSSIL_TEST(cpp_test_bluecrab_class_search_and_fuzzy)
 
     std::vector<fossil_bluecrab_search_result> fuzzy;
     db.search_fuzzy("Alpha", fuzzy);
-    // Fuzzy search may return 0 if implementation requires more than a substring match
-    ASSUME_ITS_TRUE(fuzzy.size() >= 0);
+    ASSUME_ITS_EQUAL_SIZE(fuzzy.size(), 1);
 
     db.close();
     BlueCrab::remove(CPP_TEST_DB_PATH);
@@ -242,8 +241,7 @@ FOSSIL_TEST(cpp_test_bluecrab_class_bulk_insert_and_search)
 
     std::vector<fossil_bluecrab_search_result> fuzzy;
     db.search_fuzzy("id", fuzzy);
-    // Fuzzy search may return 0 if implementation requires more than a substring match
-    ASSUME_ITS_TRUE(fuzzy.size() >= 0);
+    ASSUME_ITS_EQUAL_SIZE(fuzzy.size(), 10);
 
     for (int i = 0; i < 10; ++i) {
         db.remove_entry("id" + std::to_string(i));
