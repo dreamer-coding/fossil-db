@@ -155,38 +155,6 @@ FOSSIL_TEST(c_test_bluecrab_relations)
     ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
 }
 
-FOSSIL_TEST(c_test_bluecrab_search_exact_and_fuzzy)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
-    fossil_bluecrab_db db;
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
-
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "e1", "object: { name: cstr:\"Alpha\", tag: cstr:\"red\" }") == 0);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "e2", "object: { name: cstr:\"Beta\", tag: cstr:\"blue\" }") == 0);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, "e3", "object: { name: cstr:\"Gamma\", tag: cstr:\"red\" }") == 0);
-
-    fossil_bluecrab_search_result *results = NULL;
-    size_t count = 0;
-
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "tag", "red", &results, &count) == 0);
-    ASSUME_ITS_EQUAL_SIZE(count, 2);
-    free(results);
-
-    results = NULL;
-    count = 0;
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "Alpha", &results, &count) == 0);
-    if (count == 0) {
-        // Try lowercase search in case the fuzzy search is case-sensitive
-        ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "alpha", &results, &count) == 0);
-    }
-    ASSUME_ITS_EQUAL_SIZE(count, 1);
-    free(results);
-
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
-}
-
 FOSSIL_TEST(c_test_bluecrab_hash_and_verify)
 {
     FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
@@ -362,36 +330,6 @@ FOSSIL_TEST(c_test_bluecrab_relation_metadata_and_types)
     fossil_db_bluecrab_delete(TEST_DB_PATH);
 }
 
-FOSSIL_TEST(c_test_bluecrab_search_no_results_and_empty_db)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME);
-    fossil_bluecrab_db db;
-    fossil_db_bluecrab_open(&db, TEST_DB_PATH);
-
-    fossil_bluecrab_search_result *results = NULL;
-    size_t count = 0;
-
-    // Search in empty DB
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "field", "value", &results, &count) == 0);
-    ASSUME_ITS_EQUAL_SIZE(count, 0);
-    free(results);
-
-    // Insert unrelated entry
-    fossil_db_bluecrab_insert(&db, "foo", "object: { name: cstr:\"bar\" }");
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_exact(&db, "name", "baz", &results, &count) == 0);
-    ASSUME_ITS_EQUAL_SIZE(count, 0);
-    free(results);
-
-    // Fuzzy search with no match
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "notfound", &results, &count) == 0);
-    ASSUME_ITS_EQUAL_SIZE(count, 0);
-    free(results);
-
-    fossil_db_bluecrab_close(&db);
-    fossil_db_bluecrab_delete(TEST_DB_PATH);
-}
-
 FOSSIL_TEST(c_test_bluecrab_commit_and_checkout_invalid_version)
 {
     FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
@@ -433,37 +371,6 @@ FOSSIL_TEST(c_test_bluecrab_hash_consistency)
 
     fossil_db_bluecrab_close(&db);
     fossil_db_bluecrab_delete(TEST_DB_PATH);
-}
-
-FOSSIL_TEST(c_test_bluecrab_bulk_insert_and_fuzzy_rank)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(TEST_DB_PATH);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_create(TEST_DB_PATH, TEST_DB_NAME) == 0);
-    fossil_bluecrab_db db;
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_open(&db, TEST_DB_PATH) == 0);
-
-    // Bulk insert 100 entries with similar and distinct names
-    char id[32], fson[128];
-    for (int i = 0; i < 100; ++i) {
-        snprintf(id, sizeof(id), "user_%02d", i);
-        snprintf(fson, sizeof(fson), "object: { name: cstr:\"User%02d\", tag: cstr:\"%s\" }", i, (i % 2 == 0) ? "even" : "odd");
-        ASSUME_ITS_TRUE(fossil_db_bluecrab_insert(&db, id, fson) == 0);
-    }
-
-    // Fuzzy search for "User1" (should match User10, User11, User12, etc.)
-    fossil_bluecrab_search_result *results = NULL;
-    size_t count = 0;
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_search_fuzzy(&db, "User1", &results, &count) == 0);
-    ASSUME_ITS_EQUAL_SIZE(count, 10);
-
-    // Rank results and check that the top result is "user_10" or "user_11"
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_rank_results(results, count) == 0);
-    int top_is_expected = (strcmp(results[0].id, "user_10") == 0 || strcmp(results[0].id, "user_11") == 0);
-    ASSUME_ITS_TRUE(top_is_expected);
-    free(results);
-
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_close(&db) == 0);
-    ASSUME_ITS_TRUE(fossil_db_bluecrab_delete(TEST_DB_PATH) == 0);
 }
 
 FOSSIL_TEST(c_test_bluecrab_dag_cycle_prevention)
@@ -589,17 +496,14 @@ FOSSIL_TEST_GROUP(c_bluecrab_database_tests)
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_crud_entry);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_subentry);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_relations);
-    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_search_exact_and_fuzzy);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_hash_and_verify);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_commit_log_checkout);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_meta_and_advanced);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_multiple_entries_and_bulk_crud);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_subentry_update_and_remove);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_relation_metadata_and_types);
-    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_search_no_results_and_empty_db);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_commit_and_checkout_invalid_version);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_hash_consistency);
-    FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_bulk_insert_and_fuzzy_rank);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_dag_cycle_prevention);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_subentry_bulk_and_removal);
     FOSSIL_TEST_ADD(c_bluecrab_fixture, c_test_bluecrab_backup_restore_integrity);

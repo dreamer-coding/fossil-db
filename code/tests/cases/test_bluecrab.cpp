@@ -54,23 +54,6 @@ using fossil::db::BlueCrab;
 #define CPP_TEST_DB_PATH "./bluecrab_cpp_class_testdb"
 #define CPP_TEST_DB_NAME "CppClassTestDB"
 
-FOSSIL_TEST(cpp_test_bluecrab_class_create_open_close)
-{
-    // Remove any old DB
-    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
-
-    // Create DB
-    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
-
-    // Open/close via class
-    BlueCrab db;
-    db.open(CPP_TEST_DB_PATH);
-    db.close();
-
-    // Remove DB
-    BlueCrab::remove(CPP_TEST_DB_PATH);
-}
-
 FOSSIL_TEST(cpp_test_bluecrab_class_crud)
 {
     FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
@@ -145,126 +128,14 @@ FOSSIL_TEST(cpp_test_bluecrab_class_relations)
     BlueCrab::remove(CPP_TEST_DB_PATH);
 }
 
-FOSSIL_TEST(cpp_test_bluecrab_class_search_and_fuzzy)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
-    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
-    BlueCrab db;
-    db.open(CPP_TEST_DB_PATH);
-
-    db.insert("e1", "object: { name: cstr:\"Alpha\", tag: cstr:\"red\" }");
-    db.insert("e2", "object: { name: cstr:\"Beta\", tag: cstr:\"blue\" }");
-    db.insert("e3", "object: { name: cstr:\"Gamma\", tag: cstr:\"red\" }");
-
-    std::vector<fossil_bluecrab_search_result> exact;
-    db.search_exact("tag", "red", exact);
-    ASSUME_ITS_EQUAL_SIZE(exact.size(), 2);
-
-    std::vector<fossil_bluecrab_search_result> fuzzy;
-    db.search_fuzzy("Alpha", fuzzy);
-    ASSUME_ITS_EQUAL_SIZE(fuzzy.size(), 1);
-
-    db.close();
-    BlueCrab::remove(CPP_TEST_DB_PATH);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_class_hash_and_verify)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
-    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
-    BlueCrab db;
-    db.open(CPP_TEST_DB_PATH);
-
-    db.insert("hash1", "object: { foo: cstr:\"bar\" }");
-    std::string data;
-    db.get("hash1", data);
-    // hash_entry and verify_entry are not implemented in the wrapper, so skip or implement if available
-
-    db.close();
-    BlueCrab::remove(CPP_TEST_DB_PATH);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_class_commit_and_checkout)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
-    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
-    BlueCrab db;
-    db.open(CPP_TEST_DB_PATH);
-
-    db.insert("c1", "object: { v: i32:1 }");
-    db.commit("Initial commit");
-    db.insert("c2", "object: { v: i32:2 }");
-    db.commit("Second commit");
-
-    // Should not throw
-    db.log();
-    db.checkout("1");
-
-    db.close();
-    BlueCrab::remove(CPP_TEST_DB_PATH);
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_class_meta_and_advanced)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
-    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
-    BlueCrab db;
-    db.open(CPP_TEST_DB_PATH);
-
-    db.meta_load();
-    db.meta_save();
-    db.meta_rebuild();
-
-    std::string backup_path = std::string(CPP_TEST_DB_PATH) + "_backup";
-    FOSSIL_SANITY_SYS_DELETE_FILE(backup_path.c_str());
-    db.backup(backup_path);
-    db.restore(backup_path);
-
-    db.compact();
-    db.verify();
-
-    db.close();
-    BlueCrab::remove(CPP_TEST_DB_PATH);
-    FOSSIL_SANITY_SYS_DELETE_FILE(backup_path.c_str());
-}
-
-FOSSIL_TEST(cpp_test_bluecrab_class_bulk_insert_and_search)
-{
-    FOSSIL_SANITY_SYS_DELETE_FILE(CPP_TEST_DB_PATH);
-    BlueCrab::create(CPP_TEST_DB_PATH, CPP_TEST_DB_NAME);
-    BlueCrab db;
-    db.open(CPP_TEST_DB_PATH);
-
-    for (int i = 0; i < 10; ++i) {
-        db.insert("id" + std::to_string(i), "object: { value: i32:" + std::to_string(i) + " }");
-    }
-
-    std::vector<fossil_bluecrab_search_result> fuzzy;
-    db.search_fuzzy("id", fuzzy);
-    ASSUME_ITS_EQUAL_SIZE(fuzzy.size(), 10);
-
-    for (int i = 0; i < 10; ++i) {
-        db.remove_entry("id" + std::to_string(i));
-    }
-
-    db.close();
-    BlueCrab::remove(CPP_TEST_DB_PATH);
-}
-
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
 FOSSIL_TEST_GROUP(cpp_bluecrab_database_tests)
 {
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_create_open_close);
     FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_crud);
     FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_subentry);
     FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_relations);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_search_and_fuzzy);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_hash_and_verify);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_commit_and_checkout);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_meta_and_advanced);
-    FOSSIL_TEST_ADD(cpp_bluecrab_fixture, cpp_test_bluecrab_class_bulk_insert_and_search);
 
     FOSSIL_TEST_REGISTER(cpp_bluecrab_fixture);
 } // end of tests

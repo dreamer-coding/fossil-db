@@ -319,21 +319,6 @@ int fossil_db_bluecrab_search_exact(
     fossil_bluecrab_search_result **results,
     size_t *count);
 
-/**
- * @brief Perform a fuzzy search using a query string.
- *
- * @param db Pointer to the open database.
- * @param query Query string for fuzzy matching.
- * @param results Output pointer to allocated array of search results (caller must free).
- * @param count Output pointer to number of results found.
- * @return 0 on success, non-zero on failure.
- */
-int fossil_db_bluecrab_search_fuzzy(
-    fossil_bluecrab_db *db,
-    const char *query,
-    fossil_bluecrab_search_result **results,
-    size_t *count);
-
 /*
 ------------------------------------------------------------
 AI Smart Search Helpers
@@ -622,18 +607,6 @@ namespace fossil::db
             fossil_bluecrab_search_result* arr = nullptr;
             size_t count = 0;
             int rc = fossil_db_bluecrab_search_exact(&db_, field.c_str(), value.c_str(), &arr, &count);
-            if (rc == 0 && arr) {
-                results.assign(arr, arr + count);
-                free(arr);
-            }
-            return rc;
-        }
-
-        // Fuzzy search
-        int search_fuzzy(const std::string& query, std::vector<fossil_bluecrab_search_result>& results) {
-            fossil_bluecrab_search_result* arr = nullptr;
-            size_t count = 0;
-            int rc = fossil_db_bluecrab_search_fuzzy(&db_, query.c_str(), &arr, &count);
             if (rc == 0 && arr) {
                 results.assign(arr, arr + count);
                 free(arr);
