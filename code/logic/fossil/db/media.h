@@ -22,12 +22,30 @@
  * Copyright (C) 2014-2025 Fossil Logic. All rights reserved.
  * -----------------------------------------------------------------------------
  */
-#ifndef FOSSIL_CRABDB_FRAMEWORK_H
-#define FOSSIL_CRABDB_FRAMEWORK_H
+#ifndef FOSSIL_DB_MEDIA_H
+#define FOSSIL_DB_MEDIA_H
 
-#include "bluecrab.h"
-#include "cacheshell.h"
-#include "myshell.h"
-#include "noshell.h"
+#include "database.h"
 
-#endif /* FOSSIL_CRABDB_FRAMEWORK_H */
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+//
+
+#ifdef __cplusplus
+}
+#include <string>
+#include <vector>
+
+namespace fossil::db
+{
+
+    //
+
+}
+
+#endif
+
+#endif /* FOSSIL_DB_FRAMEWORK_H */

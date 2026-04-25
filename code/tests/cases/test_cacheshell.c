@@ -50,129 +50,129 @@ FOSSIL_TEARDOWN(c_cacheshell_fixture) {
 // CacheShell API tests
 
 FOSSIL_TEST(c_test_cacheshell_set_and_get) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
     const char *key = "foo";
     const char *value = "bar";
 
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_set(key, value));
-    char *out = fossil_db_cacheshell_get(key, 32);
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_set(key, value));
+    char *out = fossil_db_database__cacheshell_get(key, 32);
     ASSUME_ITS_TRUE(out && strcmp(out, value) == 0);
 
     const char *new_value = "baz";
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_set(key, new_value));
-    out = fossil_db_cacheshell_get(key, 32);
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_set(key, new_value));
+    out = fossil_db_database__cacheshell_get(key, 32);
     ASSUME_ITS_TRUE(out && strcmp(out, new_value) == 0);
 
-    char *small_out = fossil_db_cacheshell_get(key, 2);
+    char *small_out = fossil_db_database__cacheshell_get(key, 2);
     ASSUME_ITS_TRUE(small_out);
     ASSUME_ITS_TRUE(small_out[0] == 'b');
 
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_set_with_ttl_and_expire) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
     const char *key = "ttlkey";
     const char *value = "ttlvalue";
 
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_set_with_ttl(key, value, 1));
-    char *out = fossil_db_cacheshell_get(key, 32);
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_set_with_ttl(key, value, 1));
+    char *out = fossil_db_database__cacheshell_get(key, 32);
     ASSUME_ITS_TRUE(out && strcmp(out, value) == 0);
 
     sleep(2);
-    ASSUME_ITS_FALSE(fossil_db_cacheshell_get(key, 32));
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_ttl(key) == -1);
+    ASSUME_ITS_FALSE(fossil_db_database__cacheshell_get(key, 32));
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_ttl(key) == -1);
 
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_expire_and_ttl) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
     const char *key = "expirekey";
     const char *value = "expirevalue";
 
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_set(key, value));
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_expire(key, 2));
-    int ttl = fossil_db_cacheshell_ttl(key);
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_set(key, value));
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_expire(key, 2));
+    int ttl = fossil_db_database__cacheshell_ttl(key);
     ASSUME_ITS_TRUE(ttl > 0 && ttl <= 2);
 
     sleep(3);
-    ttl = fossil_db_cacheshell_ttl(key);
+    ttl = fossil_db_database__cacheshell_ttl(key);
     ASSUME_ITS_TRUE(ttl == -1);
 
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_touch_and_evict) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
-    fossil_db_cacheshell_set_with_ttl("k1", "v1", 1);
-    fossil_db_cacheshell_set_with_ttl("k2", "v2", 3);
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
+    fossil_db_database__cacheshell_set_with_ttl("k1", "v1", 1);
+    fossil_db_database__cacheshell_set_with_ttl("k2", "v2", 3);
 
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_touch("k1"));
-    int ttl1 = fossil_db_cacheshell_ttl("k1");
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_touch("k1"));
+    int ttl1 = fossil_db_database__cacheshell_ttl("k1");
     ASSUME_ITS_TRUE(ttl1 > 0);
 
     sleep(2);
-    size_t evicted = fossil_db_cacheshell_evict_expired();
+    size_t evicted = fossil_db_database__cacheshell_evict_expired();
     ASSUME_ITS_TRUE(evicted >= 1);
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_exists("k2"));
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_exists("k2"));
 
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_clear_and_count) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_count() == 0);
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_count() == 0);
 
-    fossil_db_cacheshell_set("a", "1");
-    fossil_db_cacheshell_set("b", "2");
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_count() == 2);
+    fossil_db_database__cacheshell_set("a", "1");
+    fossil_db_database__cacheshell_set("b", "2");
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_count() == 2);
 
-    fossil_db_cacheshell_clear();
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_count() == 0);
+    fossil_db_database__cacheshell_clear();
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_count() == 0);
 
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_exists) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
     const char *key = "existkey";
-    ASSUME_ITS_FALSE(fossil_db_cacheshell_exists(key));
-    fossil_db_cacheshell_set(key, "val");
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_exists(key));
-    fossil_db_cacheshell_remove(key);
-    ASSUME_ITS_FALSE(fossil_db_cacheshell_exists(key));
-    fossil_db_cacheshell_shutdown();
+    ASSUME_ITS_FALSE(fossil_db_database__cacheshell_exists(key));
+    fossil_db_database__cacheshell_set(key, "val");
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_exists(key));
+    fossil_db_database__cacheshell_remove(key);
+    ASSUME_ITS_FALSE(fossil_db_database__cacheshell_exists(key));
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_set_and_get_binary) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
     const char *key = "bin";
     const unsigned char data[4] = {0xde, 0xad, 0xbe, 0xef};
 
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_set_binary(key, data, sizeof(data)));
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_set_binary(key, data, sizeof(data)));
 
     // Retrieve with size output
     size_t got_size = 0;
-    const unsigned char *stored = (const unsigned char *)fossil_db_cacheshell_get_binary(key, &got_size);
+    const unsigned char *stored = (const unsigned char *)fossil_db_database__cacheshell_get_binary(key, &got_size);
     ASSUME_ITS_TRUE(stored);
     ASSUME_ITS_TRUE(got_size == sizeof(data));
     ASSUME_ITS_TRUE(memcmp(stored, data, sizeof(data)) == 0);
 
     // Retrieve with NULL out_size (optional parameter)
-    const unsigned char *stored_no_size = (const unsigned char *)fossil_db_cacheshell_get_binary(key, NULL);
+    const unsigned char *stored_no_size = (const unsigned char *)fossil_db_database__cacheshell_get_binary(key, NULL);
     ASSUME_ITS_TRUE(stored_no_size == stored);
 
     // Request nonexistent key
     size_t missing_size = 1234;
-    const unsigned char *missing = (const unsigned char *)fossil_db_cacheshell_get_binary("no-such-key", &missing_size);
+    const unsigned char *missing = (const unsigned char *)fossil_db_database__cacheshell_get_binary("no-such-key", &missing_size);
     ASSUME_ITS_FALSE(missing);
 
     // Partial copy safety
@@ -180,45 +180,45 @@ FOSSIL_TEST(c_test_cacheshell_set_and_get_binary) {
     memcpy(small_copy, stored, sizeof(small_copy));
     ASSUME_ITS_TRUE(small_copy[0] == 0xde);
 
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_get_nonexistent_key) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
-    ASSUME_ITS_FALSE(fossil_db_cacheshell_get("nope", 32));
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
+    ASSUME_ITS_FALSE(fossil_db_database__cacheshell_get("nope", 32));
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_memory_usage) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
-    size_t before = fossil_db_cacheshell_memory_usage();
-    fossil_db_cacheshell_set("mem1", "some memory");
-    fossil_db_cacheshell_set("mem2", "more memory");
-    size_t after = fossil_db_cacheshell_memory_usage();
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
+    size_t before = fossil_db_database__cacheshell_memory_usage();
+    fossil_db_database__cacheshell_set("mem1", "some memory");
+    fossil_db_database__cacheshell_set("mem2", "more memory");
+    size_t after = fossil_db_database__cacheshell_memory_usage();
     ASSUME_ITS_TRUE(after >= before);
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_stats) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
 
     size_t hits=0, misses=0;
-    fossil_db_cacheshell_stats(&hits, &misses);
+    fossil_db_database__cacheshell_stats(&hits, &misses);
     size_t base_hits = hits;
     size_t base_misses = misses;
 
-    (void)fossil_db_cacheshell_get("missing", 16); // miss
-    fossil_db_cacheshell_set("k", "v");
-    (void)fossil_db_cacheshell_get("k", 16); // hit
+    (void)fossil_db_database__cacheshell_get("missing", 16); // miss
+    fossil_db_database__cacheshell_set("k", "v");
+    (void)fossil_db_database__cacheshell_get("k", 16); // hit
 
-    fossil_db_cacheshell_stats(&hits, &misses);
+    fossil_db_database__cacheshell_stats(&hits, &misses);
     ASSUME_ITS_TRUE(hits == base_hits + 1);
     ASSUME_ITS_TRUE(misses == base_misses + 1);
 
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 typedef struct {
@@ -237,26 +237,26 @@ static void cacheshell_iter_cb(const char *key, const void *value, size_t value_
 }
 
 FOSSIL_TEST(c_test_cacheshell_iterate) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_clear();
-    fossil_db_cacheshell_set("it1", "v1");
-    fossil_db_cacheshell_set("it2", "v2");
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_clear();
+    fossil_db_database__cacheshell_set("it1", "v1");
+    fossil_db_database__cacheshell_set("it2", "v2");
     cacheshell_iter_ctx ctx = {0,0,0};
-    fossil_db_cacheshell_iterate(cacheshell_iter_cb, &ctx);
+    fossil_db_database__cacheshell_iterate(cacheshell_iter_cb, &ctx);
     ASSUME_ITS_TRUE(ctx.count >= 2);
     ASSUME_ITS_TRUE(ctx.saw_key1);
     ASSUME_ITS_TRUE(ctx.saw_key2);
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_threadsafe_toggle) {
-    fossil_db_cacheshell_init(0);
-    fossil_db_cacheshell_threadsafe(true);
-    fossil_db_cacheshell_set("ts", "on");
-    char *val = fossil_db_cacheshell_get("ts", 8);
+    fossil_db_database__cacheshell_init(0);
+    fossil_db_database__cacheshell_threadsafe(true);
+    fossil_db_database__cacheshell_set("ts", "on");
+    char *val = fossil_db_database__cacheshell_get("ts", 8);
     ASSUME_ITS_TRUE(val && strcmp(val, "on") == 0);
-    fossil_db_cacheshell_threadsafe(false);
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_threadsafe(false);
+    fossil_db_database__cacheshell_shutdown();
 }
 
 FOSSIL_TEST(c_test_cacheshell_persistence_save_load) {
@@ -268,35 +268,35 @@ FOSSIL_TEST(c_test_cacheshell_persistence_save_load) {
 
     remove(snapshot_path); // ensure clean start
 
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_init(0));
-    fossil_db_cacheshell_clear();
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_set("persist", "value"));
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_save(snapshot_path));
-    fossil_db_cacheshell_shutdown();
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_init(0));
+    fossil_db_database__cacheshell_clear();
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_set("persist", "value"));
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_save(snapshot_path));
+    fossil_db_database__cacheshell_shutdown();
 
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_init(0));
-    fossil_db_cacheshell_clear();
-    ASSUME_ITS_FALSE(fossil_db_cacheshell_exists("persist"));
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_init(0));
+    fossil_db_database__cacheshell_clear();
+    ASSUME_ITS_FALSE(fossil_db_database__cacheshell_exists("persist"));
 
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_load(snapshot_path));
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_load(snapshot_path)); // idempotent load
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_load(snapshot_path));
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_load(snapshot_path)); // idempotent load
 
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
     remove(snapshot_path); // cleanup
 }
 
 FOSSIL_TEST(c_test_cacheshell_init_with_limit) {
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_init(2));
-    fossil_db_cacheshell_clear();
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_set("L1", "A"));
-    ASSUME_ITS_TRUE(fossil_db_cacheshell_set("L2", "B"));
-    fossil_db_cacheshell_set("L3", "C");
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_init(2));
+    fossil_db_database__cacheshell_clear();
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_set("L1", "A"));
+    ASSUME_ITS_TRUE(fossil_db_database__cacheshell_set("L2", "B"));
+    fossil_db_database__cacheshell_set("L3", "C");
     int exist_count = 0;
-    exist_count += fossil_db_cacheshell_exists("L1") ? 1 : 0;
-    exist_count += fossil_db_cacheshell_exists("L2") ? 1 : 0;
-    exist_count += fossil_db_cacheshell_exists("L3") ? 1 : 0;
+    exist_count += fossil_db_database__cacheshell_exists("L1") ? 1 : 0;
+    exist_count += fossil_db_database__cacheshell_exists("L2") ? 1 : 0;
+    exist_count += fossil_db_database__cacheshell_exists("L3") ? 1 : 0;
     ASSUME_ITS_TRUE(exist_count >= 2);
-    fossil_db_cacheshell_shutdown();
+    fossil_db_database__cacheshell_shutdown();
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * *

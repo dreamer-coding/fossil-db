@@ -52,7 +52,7 @@ FOSSIL_TEARDOWN(cpp_myshell_fixture) {
  * Now uses fossil::db::MyShell C++ RAII wrapper.
  */
 FOSSIL_TEST(cpp_test_myshell_open_create_close) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test2.myshell";
 
     auto db = fossil::db::MyShell::create(file_name, err);
@@ -71,7 +71,7 @@ FOSSIL_TEST(cpp_test_myshell_open_create_close) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_commit_branch_checkout) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test4.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -96,11 +96,11 @@ FOSSIL_TEST(cpp_test_myshell_errstr) {
     ASSUME_ITS_EQUAL_CSTR(fossil::db::MyShell::errstr(FOSSIL_MYSHELL_ERROR_SUCCESS), "Success");
     ASSUME_ITS_EQUAL_CSTR(fossil::db::MyShell::errstr(FOSSIL_MYSHELL_ERROR_NOT_FOUND), "Not found");
     ASSUME_ITS_EQUAL_CSTR(fossil::db::MyShell::errstr(FOSSIL_MYSHELL_ERROR_INVALID_FILE), "Invalid file");
-    ASSUME_ITS_EQUAL_CSTR(fossil::db::MyShell::errstr(static_cast<fossil_db_myshell_error_t>(9999)), "Unknown error");
+    ASSUME_ITS_EQUAL_CSTR(fossil::db::MyShell::errstr(static_cast<fossil_db_database__myshell_error_t>(9999)), "Unknown error");
 }
 
 FOSSIL_TEST(cpp_test_myshell_put_get_del) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_put_get_del.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -134,7 +134,7 @@ FOSSIL_TEST(cpp_test_myshell_put_get_del) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_put_all_types) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_put_all_types.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -166,7 +166,7 @@ FOSSIL_TEST(cpp_test_myshell_put_all_types) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_put_invalid_type) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_put_invalid_type.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -179,7 +179,7 @@ FOSSIL_TEST(cpp_test_myshell_put_invalid_type) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_get_not_found) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_get_not_found.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -193,7 +193,7 @@ FOSSIL_TEST(cpp_test_myshell_get_not_found) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_get_buffer_too_small) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_get_buffer_small.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -211,7 +211,7 @@ FOSSIL_TEST(cpp_test_myshell_get_buffer_too_small) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_del_not_found) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_del_not_found.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -225,7 +225,7 @@ FOSSIL_TEST(cpp_test_myshell_del_not_found) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_del_twice) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_del_twice.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -246,7 +246,7 @@ FOSSIL_TEST(cpp_test_myshell_del_twice) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_stage_unstage) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_stage_unstage.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -266,7 +266,7 @@ FOSSIL_TEST(cpp_test_myshell_stage_unstage) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_backup_restore) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_backup_restore.myshell";
     const std::string backup_file = "test_backup_restore.bak";
     const std::string restore_file = "test_backup_restore_restored.myshell";
@@ -299,7 +299,7 @@ FOSSIL_TEST(cpp_test_myshell_backup_restore) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_open_invalid_path) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     fossil::db::MyShell db1("", err);
     ASSUME_ITS_TRUE(!db1.is_open());
     ASSUME_ITS_TRUE(err == FOSSIL_MYSHELL_ERROR_INVALID_FILE);
@@ -310,7 +310,7 @@ FOSSIL_TEST(cpp_test_myshell_open_invalid_path) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_create_existing_file) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_existing.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -324,7 +324,7 @@ FOSSIL_TEST(cpp_test_myshell_create_existing_file) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_backup_restore_null_args) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const std::string file_name = "test_backup_restore_null.myshell";
     auto db = fossil::db::MyShell::create(file_name, err);
     ASSUME_ITS_TRUE(db.is_open());
@@ -349,7 +349,7 @@ FOSSIL_TEST(cpp_test_myshell_backup_restore_null_args) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_diff_null_args) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     char diff[128];
     err = fossil_myshell_diff(nullptr, nullptr, diff, sizeof(diff));
     ASSUME_ITS_TRUE(err == FOSSIL_MYSHELL_ERROR_INVALID_FILE);
@@ -362,7 +362,7 @@ FOSSIL_TEST(cpp_test_myshell_diff_null_args) {
 }
 
 FOSSIL_TEST(cpp_test_myshell_check_integrity_null) {
-    fossil_db_myshell_error_t err = fossil_myshell_check_integrity(nullptr);
+    fossil_db_database__myshell_error_t err = fossil_myshell_check_integrity(nullptr);
     ASSUME_ITS_TRUE(err == FOSSIL_MYSHELL_ERROR_INVALID_FILE);
 }
 

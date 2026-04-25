@@ -51,10 +51,10 @@ FOSSIL_TEARDOWN(c_myshell_fixture) {
  * Test case for creating a new record in the database file (FSON encoding)
  */
 FOSSIL_TEST(c_test_myshell_open_create_close) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test2.myshell";
 
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
     ASSUME_ITS_TRUE(err == FOSSIL_MYSHELL_ERROR_SUCCESS);
 
@@ -70,9 +70,9 @@ FOSSIL_TEST(c_test_myshell_open_create_close) {
 }
 
 FOSSIL_TEST(c_test_myshell_commit_branch_checkout) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test4.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     err = fossil_myshell_put(db, "key", "cstr", "val");
@@ -99,9 +99,9 @@ FOSSIL_TEST(c_test_myshell_errstr) {
 }
 
 FOSSIL_TEST(c_test_myshell_put_get_del) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_put_get_del.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     // Put key-value pairs
@@ -133,9 +133,9 @@ FOSSIL_TEST(c_test_myshell_put_get_del) {
 }
 
 FOSSIL_TEST(c_test_myshell_put_all_types) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_put_all_types.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     const char *types[] = {
@@ -166,9 +166,9 @@ FOSSIL_TEST(c_test_myshell_put_all_types) {
 }
 
 FOSSIL_TEST(c_test_myshell_put_invalid_type) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_put_invalid_type.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     err = fossil_myshell_put(db, "badkey", "notatype", "value");
@@ -179,9 +179,9 @@ FOSSIL_TEST(c_test_myshell_put_invalid_type) {
 }
 
 FOSSIL_TEST(c_test_myshell_get_not_found) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_get_not_found.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     char value[128];
@@ -193,9 +193,9 @@ FOSSIL_TEST(c_test_myshell_get_not_found) {
 }
 
 FOSSIL_TEST(c_test_myshell_get_buffer_too_small) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_get_buffer_small.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     err = fossil_myshell_put(db, "shortkey", "cstr", "longvalue");
@@ -210,9 +210,9 @@ FOSSIL_TEST(c_test_myshell_get_buffer_too_small) {
 }
 
 FOSSIL_TEST(c_test_myshell_del_not_found) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_del_not_found.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     // Try to delete a key that does not exist
@@ -224,9 +224,9 @@ FOSSIL_TEST(c_test_myshell_del_not_found) {
 }
 
 FOSSIL_TEST(c_test_myshell_del_twice) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_del_twice.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     // Put a key and delete it
@@ -245,9 +245,9 @@ FOSSIL_TEST(c_test_myshell_del_twice) {
 }
 
 FOSSIL_TEST(c_test_myshell_stage_unstage) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_stage_unstage.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     err = fossil_myshell_stage(db, "foo", "cstr", "bar");
@@ -265,11 +265,11 @@ FOSSIL_TEST(c_test_myshell_stage_unstage) {
 }
 
 FOSSIL_TEST(c_test_myshell_backup_restore) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_backup_restore.myshell";
     const char *backup_file = "test_backup_restore.bak";
     const char *restore_file = "test_backup_restore_restored.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     err = fossil_myshell_put(db, "alpha", "cstr", "beta");
@@ -298,8 +298,8 @@ FOSSIL_TEST(c_test_myshell_backup_restore) {
 }
 
 FOSSIL_TEST(c_test_myshell_open_invalid_path) {
-    fossil_db_myshell_error_t err;
-    fossil_db_myshell_t *db = fossil_myshell_open(NULL, &err);
+    fossil_db_database__myshell_error_t err;
+    fossil_db_database__myshell_t *db = fossil_myshell_open(NULL, &err);
     ASSUME_ITS_TRUE(db == NULL);
     ASSUME_ITS_TRUE(err == FOSSIL_MYSHELL_ERROR_INVALID_FILE);
 
@@ -309,9 +309,9 @@ FOSSIL_TEST(c_test_myshell_open_invalid_path) {
 }
 
 FOSSIL_TEST(c_test_myshell_create_existing_file) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_existing.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
     fossil_myshell_close(db);
 
@@ -323,9 +323,9 @@ FOSSIL_TEST(c_test_myshell_create_existing_file) {
 }
 
 FOSSIL_TEST(c_test_myshell_backup_restore_null_args) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     const char *file_name = "test_backup_restore_null.myshell";
-    fossil_db_myshell_t *db = fossil_myshell_create(file_name, &err);
+    fossil_db_database__myshell_t *db = fossil_myshell_create(file_name, &err);
     ASSUME_ITS_TRUE(db != NULL);
 
     err = fossil_myshell_backup(NULL, "backup.bak");
@@ -348,7 +348,7 @@ FOSSIL_TEST(c_test_myshell_backup_restore_null_args) {
 }
 
 FOSSIL_TEST(c_test_myshell_diff_null_args) {
-    fossil_db_myshell_error_t err;
+    fossil_db_database__myshell_error_t err;
     char diff[128];
     err = fossil_myshell_diff(NULL, NULL, diff, sizeof(diff));
     ASSUME_ITS_TRUE(err == FOSSIL_MYSHELL_ERROR_INVALID_FILE);
@@ -361,7 +361,7 @@ FOSSIL_TEST(c_test_myshell_diff_null_args) {
 }
 
 FOSSIL_TEST(c_test_myshell_check_integrity_null) {
-    fossil_db_myshell_error_t err = fossil_myshell_check_integrity(NULL);
+    fossil_db_database__myshell_error_t err = fossil_myshell_check_integrity(NULL);
     ASSUME_ITS_TRUE(err == FOSSIL_MYSHELL_ERROR_INVALID_FILE);
 }
 

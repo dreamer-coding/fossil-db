@@ -52,215 +52,215 @@ FOSSIL_TEARDOWN(c_noshell_fixture) {
 // * * * * * * * * * * * * * * * * * * * * * * * *
 
 FOSSIL_TEST(c_test_noshell_create_open_delete) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell.noshell";
 
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_open_database(file_name);
+    err = fossil_db_database__noshell_open_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_delete_database(file_name);
+    err = fossil_db_database__noshell_delete_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 }
 
 FOSSIL_TEST(c_test_noshell_insert_find_remove) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell_insert.noshell";
     const char *doc = "{ username: cstr: \"alice\", password: cstr: \"secret\" }";
     const char *type = "object";
 
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_insert(file_name, doc, NULL, type);
+    err = fossil_db_database__noshell_insert(file_name, doc, NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
     char result[128];
-    err = fossil_db_noshell_find(file_name, "username", result, sizeof(result), type);
+    err = fossil_db_database__noshell_find(file_name, "username", result, sizeof(result), type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
     ASSUME_ITS_TRUE(strstr(result, "alice") != NULL);
 
-    err = fossil_db_noshell_remove(file_name, "username");
+    err = fossil_db_database__noshell_remove(file_name, "username");
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_find(file_name, "username", result, sizeof(result), type);
+    err = fossil_db_database__noshell_find(file_name, "username", result, sizeof(result), type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_NOT_FOUND);
 
-    fossil_db_noshell_delete_database(file_name);
+    fossil_db_database__noshell_delete_database(file_name);
 }
 
 FOSSIL_TEST(c_test_noshell_insert_with_id) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell_with_id.noshell";
     const char *doc = "{ item: cstr: \"book\" }";
     const char *type = "object";
     char doc_id[64];
 
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_insert_with_id(file_name, doc, NULL, type, doc_id, sizeof(doc_id));
+    err = fossil_db_database__noshell_insert_with_id(file_name, doc, NULL, type, doc_id, sizeof(doc_id));
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
     char result[128];
-    err = fossil_db_noshell_find(file_name, doc_id, result, sizeof(result), type);
+    err = fossil_db_database__noshell_find(file_name, doc_id, result, sizeof(result), type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
     ASSUME_ITS_TRUE(strstr(result, "book") != NULL);
 
-    fossil_db_noshell_delete_database(file_name);
+    fossil_db_database__noshell_delete_database(file_name);
 }
 
 FOSSIL_TEST(c_test_noshell_update) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell_update.noshell";
     const char *doc = "{ name: cstr: \"bob\" }";
     const char *new_doc = "{ name: cstr: \"bob\", age: i32: 30 }";
     const char *type = "object";
 
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_insert(file_name, doc, NULL, type);
+    err = fossil_db_database__noshell_insert(file_name, doc, NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_update(file_name, "name", new_doc, NULL, type);
+    err = fossil_db_database__noshell_update(file_name, "name", new_doc, NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
     char result[128];
-    err = fossil_db_noshell_find(file_name, "name", result, sizeof(result), type);
+    err = fossil_db_database__noshell_find(file_name, "name", result, sizeof(result), type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
     ASSUME_ITS_TRUE(strstr(result, "age: i32: 30") != NULL);
 
-    fossil_db_noshell_delete_database(file_name);
+    fossil_db_database__noshell_delete_database(file_name);
 }
 
 FOSSIL_TEST(c_test_noshell_backup_restore) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell_backup.noshell";
     const char *backup_file = "test_noshell_backup_file.noshell";
     const char *restore_file = "test_noshell_restored.noshell";
     const char *doc = "{ x: i32: 1 }";
     const char *type = "object";
 
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_insert(file_name, doc, NULL, type);
+    err = fossil_db_database__noshell_insert(file_name, doc, NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_backup_database(file_name, backup_file);
+    err = fossil_db_database__noshell_backup_database(file_name, backup_file);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_restore_database(backup_file, restore_file);
+    err = fossil_db_database__noshell_restore_database(backup_file, restore_file);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
     // Ensure the restored database is opened before querying
-    err = fossil_db_noshell_open_database(restore_file);
+    err = fossil_db_database__noshell_open_database(restore_file);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
     char result[128];
-    err = fossil_db_noshell_find(restore_file, "x", result, sizeof(result), type);
+    err = fossil_db_database__noshell_find(restore_file, "x", result, sizeof(result), type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
     ASSUME_ITS_TRUE(strstr(result, "x: i32: 1") != NULL);
 
-    fossil_db_noshell_delete_database(file_name);
-    fossil_db_noshell_delete_database(restore_file);
+    fossil_db_database__noshell_delete_database(file_name);
+    fossil_db_database__noshell_delete_database(restore_file);
     remove(backup_file);
 }
 
 FOSSIL_TEST(c_test_noshell_count_and_size) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell_count.noshell";
     const char *type = "object";
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_insert(file_name, "{ a: i32: 1 }", NULL, type);
+    err = fossil_db_database__noshell_insert(file_name, "{ a: i32: 1 }", NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
-    err = fossil_db_noshell_insert(file_name, "{ b: i32: 2 }", NULL, type);
+    err = fossil_db_database__noshell_insert(file_name, "{ b: i32: 2 }", NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
     size_t count = 0;
-    err = fossil_db_noshell_count_documents(file_name, &count);
+    err = fossil_db_database__noshell_count_documents(file_name, &count);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
     ASSUME_ITS_TRUE(count == 2);
 
     size_t size_bytes = 0;
-    err = fossil_db_noshell_get_file_size(file_name, &size_bytes);
+    err = fossil_db_database__noshell_get_file_size(file_name, &size_bytes);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
     ASSUME_ITS_TRUE(size_bytes > 0);
 
-    fossil_db_noshell_delete_database(file_name);
+    fossil_db_database__noshell_delete_database(file_name);
 }
 
 FOSSIL_TEST(c_test_noshell_first_next_document) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell_iter.noshell";
     const char *type = "object";
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_insert(file_name, "{ id: i32: 1 }", NULL, type);
+    err = fossil_db_database__noshell_insert(file_name, "{ id: i32: 1 }", NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
-    err = fossil_db_noshell_insert(file_name, "{ id: i32: 2 }", NULL, type);
+    err = fossil_db_database__noshell_insert(file_name, "{ id: i32: 2 }", NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
     char id1[64], id2[64];
-    err = fossil_db_noshell_first_document(file_name, id1, sizeof(id1));
+    err = fossil_db_database__noshell_first_document(file_name, id1, sizeof(id1));
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_next_document(file_name, id1, id2, sizeof(id2));
+    err = fossil_db_database__noshell_next_document(file_name, id1, id2, sizeof(id2));
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
     char id3[64];
-    err = fossil_db_noshell_next_document(file_name, id2, id3, sizeof(id3));
+    err = fossil_db_database__noshell_next_document(file_name, id2, id3, sizeof(id3));
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_NOT_FOUND);
 
-    fossil_db_noshell_delete_database(file_name);
+    fossil_db_database__noshell_delete_database(file_name);
 }
 
 FOSSIL_TEST(c_test_noshell_verify_database) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell_verify.noshell";
     const char *type = "object";
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_insert(file_name, "{ v: i32: 42 }", NULL, type);
+    err = fossil_db_database__noshell_insert(file_name, "{ v: i32: 42 }", NULL, type);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_verify_database(file_name);
+    err = fossil_db_database__noshell_verify_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    fossil_db_noshell_delete_database(file_name);
+    fossil_db_database__noshell_delete_database(file_name);
 }
 
 FOSSIL_TEST(c_test_noshell_validate_helpers) {
-    ASSUME_ITS_TRUE(fossil_db_noshell_validate_extension("foo.noshell"));
-    ASSUME_ITS_TRUE(!fossil_db_noshell_validate_extension("foo.txt"));
-    ASSUME_ITS_TRUE(fossil_db_noshell_validate_document("{ ok: bool: true }"));
-    ASSUME_ITS_TRUE(!fossil_db_noshell_validate_document("not_a_json"));
+    ASSUME_ITS_TRUE(fossil_db_database__noshell_validate_extension("foo.noshell"));
+    ASSUME_ITS_TRUE(!fossil_db_database__noshell_validate_extension("foo.txt"));
+    ASSUME_ITS_TRUE(fossil_db_database__noshell_validate_document("{ ok: bool: true }"));
+    ASSUME_ITS_TRUE(!fossil_db_database__noshell_validate_document("not_a_json"));
 }
 
 FOSSIL_TEST(c_test_noshell_lock_unlock_is_locked) {
-    fossil_db_noshell_error_t err;
+    fossil_db_database__noshell_error_t err;
     const char *file_name = "test_noshell_lock.noshell";
-    err = fossil_db_noshell_create_database(file_name);
+    err = fossil_db_database__noshell_create_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    err = fossil_db_noshell_lock_database(file_name);
+    err = fossil_db_database__noshell_lock_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    ASSUME_ITS_TRUE(fossil_db_noshell_is_locked(file_name));
+    ASSUME_ITS_TRUE(fossil_db_database__noshell_is_locked(file_name));
 
-    err = fossil_db_noshell_unlock_database(file_name);
+    err = fossil_db_database__noshell_unlock_database(file_name);
     ASSUME_ITS_TRUE(err == FOSSIL_NOSHELL_ERROR_SUCCESS);
 
-    ASSUME_ITS_TRUE(!fossil_db_noshell_is_locked(file_name));
+    ASSUME_ITS_TRUE(!fossil_db_database__noshell_is_locked(file_name));
 
-    fossil_db_noshell_delete_database(file_name);
+    fossil_db_database__noshell_delete_database(file_name);
 }
 
 // * * * * * * * * * * * * * * * * * * * * * * * *
