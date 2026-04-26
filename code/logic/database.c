@@ -645,9 +645,15 @@ int fossil_db_database_restore(
     if (!src)
         return -1;
 
-    /* write to temp file first for safety */
     char tmp_path[FOSSIL_DB_MAX_PATH];
-    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", db->path);
+
+    size_t path_len = strnlen(db->path, FOSSIL_DB_MAX_PATH);
+    
+    if (path_len + 4 >= sizeof(tmp_path))  /* ".tmp" + null */
+        return -1;
+    
+    memcpy(tmp_path, db->path, path_len);
+    memcpy(tmp_path + path_len, ".tmp", 5); /* includes '\0' */
 
     FILE *dst = fopen(tmp_path, "wb");
     if (!dst)
@@ -1121,10 +1127,26 @@ int fossil_db_database_commit(fossil_db_t *db, const char *message)
     /* compute root BEFORE sealing commit */
     fossil_db_compute_root_hash(db);
 
-    snprintf(db->last_commit_hash, sizeof(db->last_commit_hash),
-             "%s-%llu",
-             db->root_hash,
-             (unsigned long long)db->last_commit_version);
+    size_t root_len = strnlen(db->root_hash, sizeof(db->last_commit_hash));
+
+/* leave room for "-<20 digits>" + null */
+size_t max_root = sizeof(db->last_commit_hash) - 1 - 21;
+
+if (root_len > max_root)
+    root_len = max_root;
+
+    /* copy root hash safely */
+    memcpy(db->last_commit_hash, db->root_hash, root_len);
+    
+    /* append version */
+    int written = snprintf(
+        db->last_commit_hash + root_len,
+        sizeof(db->last_commit_hash) - root_len,
+        "-%llu",
+        (unsigned long long)db->last_commit_version);
+    
+    if (written < 0)
+        return -1;
 
     fprintf(eng->wal_fp, "COMMIT %s | %s\n",
             message ? message : "",
