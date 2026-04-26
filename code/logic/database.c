@@ -801,14 +801,6 @@ IMPORT (JSON + FSON)
 ------------------------------------------------------------
 */
 
-/* skip whitespace */
-static char *skip_ws(char *p)
-{
-    while (*p && isspace((unsigned char)*p))
-        p++;
-    return p;
-}
-
 /* extract quoted string (mutates input buffer) */
 static char *extract_string(char **p)
 {
