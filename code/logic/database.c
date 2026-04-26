@@ -29,6 +29,22 @@
 #include <stdlib.h>
 #include <string.h>
 
+
+static char *custom_strdup(const char *s)
+{
+    if (!s)
+        return NULL;
+
+    size_t len = strlen(s) + 1;
+
+    char *copy = (char *)malloc(len);
+    if (!copy)
+        return NULL;
+
+    memcpy(copy, s, len);
+    return copy;
+}
+
 /*
 ------------------------------------------------------------
 Internal Engine Definitions
@@ -191,8 +207,8 @@ int fossil_db_database_insert(fossil_db_t *db, const char *id, const char *data)
     }
 
     fossil_record_t *rec = calloc(1, sizeof(*rec));
-    rec->id = strdup(id);
-    rec->data = strdup(data);
+    rec->id = custom_strdup(id);
+    rec->data = custom_strdup(data);
     rec->version = ++eng->current_version;
 
     rec->next = eng->index.head;
