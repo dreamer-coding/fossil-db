@@ -1,5 +1,7 @@
 dir = include_directories('.')
 cc  = meson.get_compiler('c')
+add_project_arguments('-D_POSIX_C_SOURCE=200809L', language: 'c')
+add_project_arguments('-D_POSIX_C_SOURCE=200809L', language: 'cpp')
 
 dep = [
     cc.find_library('m', required : false),
