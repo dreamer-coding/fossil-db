@@ -10,8 +10,9 @@ fossil_crabdb_lib = library('fossil_crabdb',
     files(
         'database.c',
         'family.c',
-        'dsl.c',
-
+        'storage.c',
+        'media.c',
+        'dsl.c'
         ),
     install: true,
     dependencies: dep,
