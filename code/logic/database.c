@@ -24,7 +24,7 @@
  */
 #include "fossil/db/database.h"
 
-#include <ctype.c>
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
