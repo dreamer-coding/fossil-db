@@ -34,27 +34,27 @@ extern "C"
 {
 #endif
 
-    /*
-    ------------------------------------------------------------
-    Fossil Database Core API
-    Unified interface for database operations
-    ------------------------------------------------------------
-    This API provides a stable entry point into the Fossil DB
-    system, abstracting internal domains:
+/*
+------------------------------------------------------------
+Fossil Database Core API
+Unified interface for database operations
+------------------------------------------------------------
+This API provides a stable entry point into the Fossil DB
+system, abstracting internal domains:
 
-    - database (core engine)
-    - storage (persistence)
-    - family (relationships)
-    - dsl (query execution)
-    - media (serialization)
-    ------------------------------------------------------------
-    */
+- database (core engine)
+- storage (persistence)
+- family (relationships)
+- dsl (query execution)
+- media (serialization)
+------------------------------------------------------------
+*/
 
-    /*
-    ------------------------------------------------------------
-    Constants
-    ------------------------------------------------------------
-    */
+/*
+------------------------------------------------------------
+Constants
+------------------------------------------------------------
+*/
 
 #define FOSSIL_DB_MAX_NAME 128
 #define FOSSIL_DB_MAX_PATH 512
@@ -72,14 +72,27 @@ typedef struct fossil_db_t
     char path[FOSSIL_DB_MAX_PATH];
 
     bool opened;
+    bool corrupted;
 
-    uint64_t version;
+    /* Versioning */
+    uint64_t version;              /* current working version */
+    uint64_t last_commit_version;  /* last finalized commit */
+    char last_commit_hash[64];     /* hash of last commit */
+
+    /* Integrity */
+    char root_hash[64];            /* global database state hash */
+    uint64_t integrity_version;    /* last verified version */
+
+    /* Stats */
     size_t entry_count;
     size_t relation_count;
 
+    /* Error state */
     char last_error[FOSSIL_DB_MAX_ERROR];
+    uint32_t last_error_code;
 
-    void *internal; /* private engine state */
+    /* Internal engine */
+    void *internal; /* storage engine, indexes, WAL/append log, DSL runtime */
 
 } fossil_db_t;
 
@@ -96,7 +109,7 @@ Lifecycle
  * @param name Name of the database
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__create(const char *path, const char *name);
+int fossil_db_database_create(const char *path, const char *name);
 
 /**
  * Open an existing database
@@ -105,7 +118,7 @@ int fossil_db_database__create(const char *path, const char *name);
  * @param path Path to the database file
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__open(fossil_db_t *db, const char *path);
+int fossil_db_database_open(fossil_db_t *db, const char *path);
 
 /**
  * Close database and release resources
@@ -113,7 +126,7 @@ int fossil_db_database__open(fossil_db_t *db, const char *path);
  * @param db Database handle
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__close(fossil_db_t *db);
+int fossil_db_database_close(fossil_db_t *db);
 
 /**
  * Delete database from disk
@@ -121,7 +134,7 @@ int fossil_db_database__close(fossil_db_t *db);
  * @param path Path to the database file to delete
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__delete(const char *path);
+int fossil_db_database_delete(const char *path);
 
 /*
 ------------------------------------------------------------
@@ -137,7 +150,7 @@ Entry Operations (Core CRUD)
  * @param data Arbitrary data blob (json, fson, etc.)
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__insert(
+int fossil_db_database_insert(
     fossil_db_t *db,
     const char *id,
     const char *data);
@@ -150,7 +163,7 @@ int fossil_db_database__insert(
  * @param out_data Output parameter for retrieved data (caller must free)
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__get(
+int fossil_db_database_get(
     fossil_db_t *db,
     const char *id,
     char **out_data);
@@ -163,7 +176,7 @@ int fossil_db_database__get(
  * @param data New data for the entry
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__update(
+int fossil_db_database_update(
     fossil_db_t *db,
     const char *id,
     const char *data);
@@ -175,7 +188,7 @@ int fossil_db_database__update(
  * @param id Unique identifier for the entry
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__remove(
+int fossil_db_database_remove(
     fossil_db_t *db,
     const char *id);
 
@@ -194,7 +207,7 @@ Sub-Entry Operations
  * @param data Arbitrary data blob for the sub-entry
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__insert_sub(
+int fossil_db_database_insert_sub(
     fossil_db_t *db,
     const char *parent_id,
     const char *sub_id,
@@ -209,7 +222,7 @@ int fossil_db_database__insert_sub(
  * @param out_data Output parameter for retrieved data (caller must free)
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__get_sub(
+int fossil_db_database_get_sub(
     fossil_db_t *db,
     const char *parent_id,
     const char *sub_id,
@@ -230,7 +243,7 @@ Relationship (Family / DAG)
  * @param relation Type of relationship (e.g., "parent", "friend", etc.)
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__link(
+int fossil_db_database_link(
     fossil_db_t *db,
     const char *source_id,
     const char *target_id,
@@ -244,7 +257,7 @@ int fossil_db_database__link(
  * @param target_id ID of the target entry
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__unlink(
+int fossil_db_database_unlink(
     fossil_db_t *db,
     const char *source_id,
     const char *target_id);
@@ -263,7 +276,7 @@ Query / DSL
  * @param out_result Output parameter for query result (caller must free)
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__query(
+int fossil_db_database_query(
     fossil_db_t *db,
     const char *query,
     char **out_result);
@@ -311,7 +324,7 @@ Versioning
  * @param message Commit message describing the changes
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__commit(
+int fossil_db_database_commit(
     fossil_db_t *db,
     const char *message);
 
@@ -322,7 +335,7 @@ int fossil_db_database__commit(
  * @param version Version identifier
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__checkout(
+int fossil_db_database_checkout(
     fossil_db_t *db,
     const char *version);
 
@@ -332,7 +345,7 @@ int fossil_db_database__checkout(
  * @param db Database handle
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__log(
+int fossil_db_database_log(
     fossil_db_t *db);
 
 /*
@@ -347,7 +360,7 @@ Integrity
  * @param db Database handle
  * @return 0 if the database is valid, non-zero if corruption is detected
  */
-int fossil_db_database__verify(fossil_db_t *db);
+int fossil_db_database_verify(fossil_db_t *db);
 
 /*
 ------------------------------------------------------------
@@ -361,7 +374,7 @@ Meta / Maintenance
  * @param db Database handle
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__compact(fossil_db_t *db);
+int fossil_db_database_compact(fossil_db_t *db);
 
 /**
  * Backup the database to a specified path
@@ -370,7 +383,7 @@ int fossil_db_database__compact(fossil_db_t *db);
  * @param backup_path Path to save the backup file
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__backup(
+int fossil_db_database_backup(
     fossil_db_t *db,
     const char *backup_path);
 
@@ -381,7 +394,7 @@ int fossil_db_database__backup(
  * @param backup_path Path to the backup file to restore from
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__restore(
+int fossil_db_database_restore(
     fossil_db_t *db,
     const char *backup_path);
 
@@ -399,7 +412,7 @@ Media / Serialization
  * @param output_path Path to save the exported file
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__export(
+int fossil_db_database_export(
     fossil_db_t *db,
     const char *format,
     const char *output_path);
@@ -412,10 +425,52 @@ int fossil_db_database__export(
  * @param input_path Path to the input file
  * @return 0 on success, non-zero on error
  */
-int fossil_db_database__import(
+int fossil_db_database_import(
     fossil_db_t *db,
     const char *format,
     const char *input_path);
+
+
+/*
+------------------------------------------------------------
+Hash / Data Integrity
+------------------------------------------------------------
+*/
+
+/**
+ * Compute a hash for arbitrary data
+ *
+ * @param data Input data
+ * @param out_hash Output buffer (must be large enough)
+ * @return 0 on success, non-zero on error
+ */
+int fossil_db_database_hash(
+    const char *data,
+    char *out_hash);
+
+/**
+ * Retrieve stored hash for an entry
+ *
+ * @param db Database handle
+ * @param id Entry ID
+ * @param out_hash Output buffer
+ * @return 0 on success, non-zero on error
+ */
+int fossil_db_database_get_hash(
+    fossil_db_t *db,
+    const char *id,
+    char *out_hash);
+
+/**
+ * Verify integrity of a specific entry
+ *
+ * @param db Database handle
+ * @param id Entry ID
+ * @return 0 if valid, non-zero if corrupted
+ */
+int fossil_db_database_verify_entry(
+    fossil_db_t *db,
+    const char *id);
 
 /*
 ------------------------------------------------------------
@@ -429,7 +484,7 @@ Error Handling
  * @param db Database handle
  * @return Last error message string
  */
-const char *fossil_db_database__last_error(fossil_db_t *db);
+const char *fossil_db_database_last_error(fossil_db_t *db);
 
 #ifdef __cplusplus
 }
@@ -448,13 +503,13 @@ namespace fossil::db
         // Core CRUD operations
         bool insert(const std::string &id, const std::string &data)
         {
-            return fossil_db_database__insert(&db_, id.c_str(), data.c_str()) == 0;
+            return fossil_db_database_insert(&db_, id.c_str(), data.c_str()) == 0;
         }
 
         bool get(const std::string &id, std::string &out_data)
         {
             char *data = nullptr;
-            if (fossil_db_database__get(&db_, id.c_str(), &data) == 0)
+            if (fossil_db_database_get(&db_, id.c_str(), &data) == 0)
             {
                 out_data = data;
                 free(data);
@@ -465,12 +520,12 @@ namespace fossil::db
 
         bool update(const std::string &id, const std::string &data)
         {
-            return fossil_db_database__update(&db_, id.c_str(), data.c_str()) == 0;
+            return fossil_db_database_update(&db_, id.c_str(), data.c_str()) == 0;
         }
 
         bool remove(const std::string &id)
         {
-            return fossil_db_database__remove(&db_, id.c_str()) == 0;
+            return fossil_db_database_remove(&db_, id.c_str()) == 0;
         }
 
     private:

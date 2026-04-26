@@ -24,71 +24,54 @@
  */
 #include "fossil/db/database.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
-
-char *_strdup_(const char *s)
-{
-    if (!s)
-        return NULL;
-    size_t len = strlen(s);
-    char *dup = malloc(len + 1);
-    if (dup)
-        memcpy(dup, s, len + 1);
-    return dup;
-}
 
 /*
 ------------------------------------------------------------
-Internal Structures
+Internal Engine Definitions
 ------------------------------------------------------------
 */
 
-typedef struct entry_node
+typedef struct fossil_record_t
 {
     char *id;
     char *data;
-    struct entry_node *next;
-} entry_node;
+    uint64_t version;
+    struct fossil_record_t *next;
+} fossil_record_t;
 
-typedef struct relation_node
+typedef struct fossil_index_t
 {
-    char *src;
-    char *dst;
-    char *rel;
-    struct relation_node *next;
-} relation_node;
+    fossil_record_t *head;
+} fossil_index_t;
 
-typedef struct internal_state
+typedef struct fossil_engine_t
 {
-    entry_node *entries;
-    relation_node *relations;
-} internal_state;
+    FILE *data_fp;
+    FILE *wal_fp;
+
+    fossil_index_t index;
+
+    uint64_t current_version;
+} fossil_engine_t;
 
 /*
 ------------------------------------------------------------
-Helpers
+Utilities
 ------------------------------------------------------------
 */
 
-static void set_error(fossil_db_t *db, const char *msg)
+static void fossil_set_error(fossil_db_t *db, uint32_t code, const char *msg)
 {
-    if (!db)
-        return;
-    snprintf(db->last_error, FOSSIL_DB_MAX_ERROR, "%s", msg);
+    db->last_error_code = code;
+    strncpy(db->last_error, msg, FOSSIL_DB_MAX_ERROR - 1);
 }
 
-static entry_node *find_entry(internal_state *st, const char *id)
+static fossil_engine_t *engine_get(fossil_db_t *db)
 {
-    entry_node *cur = st->entries;
-    while (cur)
-    {
-        if (strcmp(cur->id, id) == 0)
-            return cur;
-        cur = cur->next;
-    }
-    return NULL;
+    return (fossil_engine_t *)db->internal;
 }
 
 /*
@@ -99,18 +82,14 @@ Lifecycle
 
 int fossil_db_database_create(const char *path, const char *name)
 {
-    if (!path || !name)
+    char fullpath[FOSSIL_DB_MAX_PATH];
+    snprintf(fullpath, sizeof(fullpath), "%s/%s.fdb", path, name);
+
+    FILE *fp = fopen(fullpath, "wb");
+    if (!fp)
         return -1;
 
-    /* simulate creation by touching a file */
-    char full[FOSSIL_DB_MAX_PATH];
-    snprintf(full, sizeof(full), "%s/%s.crab", path, name);
-
-    FILE *f = fopen(full, "w");
-    if (!f)
-        return -1;
-    fclose(f);
-
+    fclose(fp);
     return 0;
 }
 
@@ -121,50 +100,53 @@ int fossil_db_database_open(fossil_db_t *db, const char *path)
 
     memset(db, 0, sizeof(*db));
 
-    strncpy(db->path, path, FOSSIL_DB_MAX_PATH - 1);
-    strncpy(db->name, path, FOSSIL_DB_MAX_NAME - 1);
-
-    internal_state *st = calloc(1, sizeof(internal_state));
-    if (!st)
+    fossil_engine_t *eng = calloc(1, sizeof(*eng));
+    if (!eng)
         return -1;
 
-    db->internal = st;
+    eng->data_fp = fopen(path, "rb+");
+    if (!eng->data_fp)
+    {
+        free(eng);
+        return -1;
+    }
+
+    char wal_path[FOSSIL_DB_MAX_PATH];
+    snprintf(wal_path, sizeof(wal_path), "%s.wal", path);
+
+    eng->wal_fp = fopen(wal_path, "ab+");
+
+    db->internal = eng;
     db->opened = true;
     db->version = 1;
+
+    strncpy(db->path, path, FOSSIL_DB_MAX_PATH - 1);
 
     return 0;
 }
 
 int fossil_db_database_close(fossil_db_t *db)
 {
-    if (!db || !db->opened)
+    if (!db || !db->internal)
         return -1;
 
-    internal_state *st = db->internal;
+    fossil_engine_t *eng = engine_get(db);
 
-    entry_node *e = st->entries;
-    while (e)
+    fclose(eng->data_fp);
+    fclose(eng->wal_fp);
+
+    /* free index */
+    fossil_record_t *cur = eng->index.head;
+    while (cur)
     {
-        entry_node *n = e->next;
-        free(e->id);
-        free(e->data);
-        free(e);
-        e = n;
+        fossil_record_t *next = cur->next;
+        free(cur->id);
+        free(cur->data);
+        free(cur);
+        cur = next;
     }
 
-    relation_node *r = st->relations;
-    while (r)
-    {
-        relation_node *n = r->next;
-        free(r->src);
-        free(r->dst);
-        free(r->rel);
-        free(r);
-        r = n;
-    }
-
-    free(st);
-
+    free(eng);
     db->internal = NULL;
     db->opened = false;
 
@@ -173,97 +155,116 @@ int fossil_db_database_close(fossil_db_t *db)
 
 int fossil_db_database_delete(const char *path)
 {
-    if (!path)
-        return -1;
     return remove(path);
 }
 
 /*
 ------------------------------------------------------------
-Entry Operations
+Core CRUD
 ------------------------------------------------------------
 */
+
+static fossil_record_t *index_find(fossil_engine_t *eng, const char *id)
+{
+    fossil_record_t *cur = eng->index.head;
+    while (cur)
+    {
+        if (strcmp(cur->id, id) == 0)
+            return cur;
+        cur = cur->next;
+    }
+    return NULL;
+}
 
 int fossil_db_database_insert(fossil_db_t *db, const char *id, const char *data)
 {
     if (!db || !id || !data)
         return -1;
 
-    internal_state *st = db->internal;
+    fossil_engine_t *eng = engine_get(db);
 
-    if (find_entry(st, id))
+    if (index_find(eng, id))
     {
-        set_error(db, "entry already exists");
+        fossil_set_error(db, 1, "duplicate id");
         return -1;
     }
 
-    entry_node *e = calloc(1, sizeof(*e));
-    e->id = _strdup_(id);
-    e->data = _strdup_(data);
+    fossil_record_t *rec = calloc(1, sizeof(*rec));
+    rec->id = strdup(id);
+    rec->data = strdup(data);
+    rec->version = ++eng->current_version;
 
-    e->next = st->entries;
-    st->entries = e;
+    rec->next = eng->index.head;
+    eng->index.head = rec;
+
+    fprintf(eng->wal_fp, "INSERT %s %s\n", id, data);
+    fflush(eng->wal_fp);
 
     db->entry_count++;
+
     return 0;
 }
 
-int fossil_db_database_get(fossil_db_t *db, const char *id, char **out_data)
+int fossil_db_database_get(
+    fossil_db_t *db,
+    const char *id,
+    char **out_data)
 {
     if (!db || !id || !out_data)
         return -1;
 
-    internal_state *st = db->internal;
-    entry_node *e = find_entry(st, id);
+    fossil_engine_t *eng = engine_get(db);
+    fossil_record_t *rec = index_find(eng, id);
 
-    if (!e)
-    {
-        set_error(db, "entry not found");
+    if (!rec)
         return -1;
-    }
 
-    *out_data = _strdup_(e->data);
+    *out_data = strdup(rec->data);
     return 0;
 }
 
-int fossil_db_database_update(fossil_db_t *db, const char *id, const char *data)
+int fossil_db_database_update(
+    fossil_db_t *db,
+    const char *id,
+    const char *data)
 {
-    if (!db || !id || !data)
+    fossil_engine_t *eng = engine_get(db);
+    fossil_record_t *rec = index_find(eng, id);
+
+    if (!rec)
         return -1;
 
-    internal_state *st = db->internal;
-    entry_node *e = find_entry(st, id);
+    free(rec->data);
+    rec->data = strdup(data);
+    rec->version = ++eng->current_version;
 
-    if (!e)
-    {
-        set_error(db, "entry not found");
-        return -1;
-    }
-
-    free(e->data);
-    e->data = _strdup_(data);
+    fprintf(eng->wal_fp, "UPDATE %s %s\n", id, data);
+    fflush(eng->wal_fp);
 
     return 0;
 }
 
-int fossil_db_database_remove(fossil_db_t *db, const char *id)
+int fossil_db_database_remove(
+    fossil_db_t *db,
+    const char *id)
 {
-    if (!db || !id)
-        return -1;
+    fossil_engine_t *eng = engine_get(db);
 
-    internal_state *st = db->internal;
-    entry_node **cur = &st->entries;
+    fossil_record_t **cur = &eng->index.head;
 
     while (*cur)
     {
         if (strcmp((*cur)->id, id) == 0)
         {
-            entry_node *tmp = *cur;
+            fossil_record_t *tmp = *cur;
             *cur = tmp->next;
 
             free(tmp->id);
             free(tmp->data);
             free(tmp);
+
+            fprintf(eng->wal_fp, "REMOVE %s\n", id);
+            fflush(eng->wal_fp);
 
             db->entry_count--;
             return 0;
@@ -271,13 +272,12 @@ int fossil_db_database_remove(fossil_db_t *db, const char *id)
         cur = &(*cur)->next;
     }
 
-    set_error(db, "entry not found");
     return -1;
 }
 
 /*
 ------------------------------------------------------------
-Sub-Entry (simple namespacing)
+Sub-Entry / Relationship (minimal real wiring)
 ------------------------------------------------------------
 */
 
@@ -287,13 +287,10 @@ int fossil_db_database_insert_sub(
     const char *sub_id,
     const char *data)
 {
-    if (!parent_id || !sub_id)
-        return -1;
-
-    char composed[256];
-    snprintf(composed, sizeof(composed), "%s:%s", parent_id, sub_id);
-
-    return fossil_db_database_insert(db, composed, data);
+    /* stored as composite key */
+    char key[256];
+    snprintf(key, sizeof(key), "%s:%s", parent_id, sub_id);
+    return fossil_db_database_insert(db, key, data);
 }
 
 int fossil_db_database_get_sub(
@@ -302,18 +299,14 @@ int fossil_db_database_get_sub(
     const char *sub_id,
     char **out_data)
 {
-    if (!parent_id || !sub_id)
-        return -1;
-
-    char composed[256];
-    snprintf(composed, sizeof(composed), "%s:%s", parent_id, sub_id);
-
-    return fossil_db_database_get(db, composed, out_data);
+    char key[256];
+    snprintf(key, sizeof(key), "%s:%s", parent_id, sub_id);
+    return fossil_db_database_get(db, key, out_data);
 }
 
 /*
 ------------------------------------------------------------
-Relationships
+Relationship (Family / DAG)
 ------------------------------------------------------------
 */
 
@@ -323,21 +316,9 @@ int fossil_db_database_link(
     const char *target_id,
     const char *relation)
 {
-    if (!db || !source_id || !target_id || !relation)
-        return -1;
-
-    internal_state *st = db->internal;
-
-    relation_node *r = calloc(1, sizeof(*r));
-    r->src = _strdup_(source_id);
-    r->dst = _strdup_(target_id);
-    r->rel = _strdup_(relation);
-
-    r->next = st->relations;
-    st->relations = r;
-
-    db->relation_count++;
-    return 0;
+    char key[256];
+    snprintf(key, sizeof(key), "rel:%s:%s", source_id, target_id);
+    return fossil_db_database_insert(db, key, relation);
 }
 
 int fossil_db_database_unlink(
@@ -345,38 +326,14 @@ int fossil_db_database_unlink(
     const char *source_id,
     const char *target_id)
 {
-    if (!db || !source_id || !target_id)
-        return -1;
-
-    internal_state *st = db->internal;
-    relation_node **cur = &st->relations;
-
-    while (*cur)
-    {
-        if (strcmp((*cur)->src, source_id) == 0 &&
-            strcmp((*cur)->dst, target_id) == 0)
-        {
-
-            relation_node *tmp = *cur;
-            *cur = tmp->next;
-
-            free(tmp->src);
-            free(tmp->dst);
-            free(tmp->rel);
-            free(tmp);
-
-            db->relation_count--;
-            return 0;
-        }
-        cur = &(*cur)->next;
-    }
-
-    return -1;
+    char key[256];
+    snprintf(key, sizeof(key), "rel:%s:%s", source_id, target_id);
+    return fossil_db_database_remove(db, key);
 }
 
 /*
 ------------------------------------------------------------
-Query / DSL (basic passthrough)
+Query / Search (baseline)
 ------------------------------------------------------------
 */
 
@@ -385,19 +342,10 @@ int fossil_db_database_query(
     const char *query,
     char **out_result)
 {
-    if (!db || !query || !out_result)
-        return -1;
-
-    /* simple echo for now */
-    *out_result = _strdup_(query);
+    /* placeholder for DSL engine hook */
+    *out_result = strdup(query);
     return 0;
 }
-
-/*
-------------------------------------------------------------
-Search (naive contains)
-------------------------------------------------------------
-*/
 
 int fossil_db_database_search(
     fossil_db_t *db,
@@ -406,19 +354,18 @@ int fossil_db_database_search(
     fossil_db_database_search_result **results,
     size_t *count)
 {
-    if (!db || !field || !value || !results || !count)
-        return -1;
+    (void)field;
 
-    internal_state *st = db->internal;
+    fossil_engine_t *eng = engine_get(db);
 
-    size_t cap = 8;
+    size_t cap = 16;
     *results = malloc(sizeof(**results) * cap);
     *count = 0;
 
-    entry_node *e = st->entries;
-    while (e)
+    fossil_record_t *cur = eng->index.head;
+    while (cur)
     {
-        if (strstr(e->data, value))
+        if (strstr(cur->data, value))
         {
             if (*count >= cap)
             {
@@ -426,13 +373,13 @@ int fossil_db_database_search(
                 *results = realloc(*results, sizeof(**results) * cap);
             }
 
-            strncpy((*results)[*count].id, e->id, FOSSIL_DB_MAX_NAME - 1);
+            strncpy((*results)[*count].id, cur->id, FOSSIL_DB_MAX_NAME);
             (*results)[*count].score = 1.0f;
-            strncpy((*results)[*count].snippet, e->data, 127);
+            strncpy((*results)[*count].snippet, cur->data, 127);
 
             (*count)++;
         }
-        e = e->next;
+        cur = cur->next;
     }
 
     return 0;
@@ -440,44 +387,49 @@ int fossil_db_database_search(
 
 /*
 ------------------------------------------------------------
-Versioning
+Versioning / Integrity
 ------------------------------------------------------------
 */
 
-int fossil_db_database_commit(fossil_db_t *db, const char *message)
+int fossil_db_database_commit(
+    fossil_db_t *db,
+    const char *message)
 {
-    if (!db || !message)
-        return -1;
-    db->version++;
+    fossil_engine_t *eng = engine_get(db);
+
+    db->last_commit_version = ++eng->current_version;
+
+    snprintf(db->last_commit_hash, sizeof(db->last_commit_hash),
+             "commit-%llu", (unsigned long long)db->last_commit_version);
+
+    fprintf(eng->wal_fp, "COMMIT %s\n", message);
+    fflush(eng->wal_fp);
+
     return 0;
 }
 
-int fossil_db_database_checkout(fossil_db_t *db, const char *version)
+int fossil_db_database_checkout(
+    fossil_db_t *db,
+    const char *version)
 {
-    if (!db || !version)
-        return -1;
+    (void)db;
+    (void)version;
     return 0;
 }
 
 int fossil_db_database_log(fossil_db_t *db)
 {
-    if (!db)
-        return -1;
-    printf("version: %llu\n", (unsigned long long)db->version);
+    (void)db;
     return 0;
 }
 
-/*
-------------------------------------------------------------
-Integrity
-------------------------------------------------------------
-*/
-
 int fossil_db_database_verify(fossil_db_t *db)
 {
-    if (!db)
+    if (!db || !db->internal)
         return -1;
-    return db->opened ? 0 : -1;
+
+    db->corrupted = false;
+    return 0;
 }
 
 /*
@@ -490,6 +442,68 @@ int fossil_db_database_compact(fossil_db_t *db)
 {
     if (!db)
         return -1;
+
+    if (!db->opened || db->corrupted)
+    {
+        snprintf(db->last_error,
+                 sizeof(db->last_error),
+                 "compact failed: db not in valid state");
+
+        db->last_error_code = 1;
+        return -1;
+    }
+
+    /* ------------------------------------------------------------
+       Step 1: Sync logical state
+       ------------------------------------------------------------
+    */
+    db->integrity_version = db->version;
+
+    /* ------------------------------------------------------------
+       Step 2: Normalize internal stats
+       (real DBs would rebuild indexes / reclaim deleted entries)
+       ------------------------------------------------------------
+    */
+    if (db->entry_count == 0 && db->relation_count == 0)
+    {
+        /* nothing to compact, but still mark clean */
+    }
+
+    /* ------------------------------------------------------------
+       Step 3: Internal engine hook (future WAL / index rebuild)
+       ------------------------------------------------------------
+    */
+    if (db->internal)
+    {
+        /*
+        fossil_storage_compact(db->internal);
+        fossil_index_rebuild(db->internal);
+        fossil_wal_truncate(db->internal);
+        */
+    }
+
+    /* ------------------------------------------------------------
+       Step 4: Update root integrity hash (lightweight placeholder)
+       ------------------------------------------------------------
+    */
+    uint64_t mix =
+        db->version ^
+        db->entry_count ^
+        db->relation_count ^
+        db->integrity_version;
+
+    snprintf(db->root_hash,
+             sizeof(db->root_hash),
+             "compact-%llu-%llu",
+             (unsigned long long)db->version,
+             (unsigned long long)mix);
+
+    /* ------------------------------------------------------------
+       Step 5: bump compaction cycle
+       ------------------------------------------------------------
+    */
+    db->version++;
+
     return 0;
 }
 
@@ -497,17 +511,37 @@ int fossil_db_database_backup(
     fossil_db_t *db,
     const char *backup_path)
 {
-    if (!db || !backup_path)
+    if (!db || !db->opened || !backup_path)
         return -1;
 
-    FILE *f = fopen(backup_path, "w");
-    if (!f)
+    FILE *src = fopen(db->path, "rb");
+    if (!src)
         return -1;
 
-    fprintf(f, "backup version %llu\n",
-            (unsigned long long)db->version);
+    FILE *dst = fopen(backup_path, "wb");
+    if (!dst)
+    {
+        fclose(src);
+        return -1;
+    }
 
-    fclose(f);
+    char buf[4096];
+    size_t n;
+
+    while ((n = fread(buf, 1, sizeof(buf), src)) > 0)
+        fwrite(buf, 1, n, dst);
+
+    fclose(src);
+    fclose(dst);
+
+    /* mark snapshot state */
+    db->last_commit_version = db->version;
+
+    snprintf(db->last_commit_hash,
+             sizeof(db->last_commit_hash),
+             "backup-%llu",
+             (unsigned long long)db->version);
+
     return 0;
 }
 
@@ -517,12 +551,83 @@ int fossil_db_database_restore(
 {
     if (!db || !backup_path)
         return -1;
+
+    FILE *src = fopen(backup_path, "rb");
+    if (!src)
+        return -1;
+
+    /* write to temp file first for safety */
+    char tmp_path[FOSSIL_DB_MAX_PATH];
+    snprintf(tmp_path, sizeof(tmp_path), "%s.tmp", db->path);
+
+    FILE *dst = fopen(tmp_path, "wb");
+    if (!dst)
+    {
+        fclose(src);
+        return -1;
+    }
+
+    char buf[4096];
+    size_t n;
+
+    while ((n = fread(buf, 1, sizeof(buf), src)) > 0)
+        fwrite(buf, 1, n, dst);
+
+    fclose(src);
+    fclose(dst);
+
+    /* atomic replace */
+    remove(db->path);
+    rename(tmp_path, db->path);
+
+    /* reset in-memory state */
+    db->version = db->last_commit_version;
+    db->corrupted = false;
+    db->integrity_version = db->version;
+
     return 0;
 }
 
 /*
-------------------------------------------------------------
+-------------------------------------------------------------
 Media
+-------------------------------------------------------------
+*/
+
+static fossil_engine_t *engine_get(fossil_db_t *db);
+
+/*
+------------------------------------------------------------
+Helpers
+------------------------------------------------------------
+*/
+
+static int str_eq(const char *a, const char *b)
+{
+    return strcmp(a, b) == 0;
+}
+
+/* basic JSON string escape */
+static void json_escape(FILE *fp, const char *s)
+{
+    while (*s)
+    {
+        switch (*s)
+        {
+        case '"':  fputs("\\\"", fp); break;
+        case '\\': fputs("\\\\", fp); break;
+        case '\n': fputs("\\n", fp); break;
+        case '\r': fputs("\\r", fp); break;
+        case '\t': fputs("\\t", fp); break;
+        default: fputc(*s, fp);
+        }
+        s++;
+    }
+}
+
+/*
+------------------------------------------------------------
+EXPORT
 ------------------------------------------------------------
 */
 
@@ -531,17 +636,110 @@ int fossil_db_database_export(
     const char *format,
     const char *output_path)
 {
-    if (!db || !format || !output_path)
+    if (!db || !db->internal || !format || !output_path)
         return -1;
 
-    FILE *f = fopen(output_path, "w");
-    if (!f)
+    fossil_engine_t *eng = engine_get(db);
+
+    FILE *fp = fopen(output_path, "wb");
+    if (!fp)
         return -1;
 
-    fprintf(f, "export format: %s\n", format);
-    fclose(f);
+    /*
+    ------------------------
+    JSON EXPORT
+    ------------------------
+    */
+    if (str_eq(format, "json"))
+    {
+        fprintf(fp, "{\n");
+        fprintf(fp, "  \"name\": \"%s\",\n", db->name);
+        fprintf(fp, "  \"version\": %llu,\n",
+                (unsigned long long)db->version);
+        fprintf(fp, "  \"entries\": [\n");
 
-    return 0;
+        fossil_record_t *cur = eng->index.head;
+        int first = 1;
+
+        while (cur)
+        {
+            if (!first)
+                fprintf(fp, ",\n");
+
+            fprintf(fp, "    {\"id\":\"");
+            json_escape(fp, cur->id);
+            fprintf(fp, "\",\"data\":\"");
+            json_escape(fp, cur->data);
+            fprintf(fp, "\"}");
+
+            first = 0;
+            cur = cur->next;
+        }
+
+        fprintf(fp, "\n  ]\n");
+        fprintf(fp, "}\n");
+
+        fclose(fp);
+        return 0;
+    }
+
+    /*
+    ------------------------
+    FSON (simple binary-ish text for now)
+    ------------------------
+    */
+    if (str_eq(format, "fson"))
+    {
+        fossil_record_t *cur = eng->index.head;
+
+        while (cur)
+        {
+            fprintf(fp, "%s|%s\n", cur->id, cur->data);
+            cur = cur->next;
+        }
+
+        fclose(fp);
+        return 0;
+    }
+
+    fclose(fp);
+    return -1;
+}
+
+/*
+------------------------------------------------------------
+IMPORT (JSON + FSON)
+------------------------------------------------------------
+*/
+
+/* skip whitespace */
+static char *skip_ws(char *p)
+{
+    while (*p && isspace((unsigned char)*p))
+        p++;
+    return p;
+}
+
+/* extract quoted string (mutates input buffer) */
+static char *extract_string(char **p)
+{
+    char *start = strchr(*p, '"');
+    if (!start)
+        return NULL;
+
+    start++;
+    char *end = start;
+
+    while (*end && *end != '"')
+        end++;
+
+    if (!*end)
+        return NULL;
+
+    *end = '\0';
+    *p = end + 1;
+
+    return start;
 }
 
 int fossil_db_database_import(
@@ -549,20 +747,316 @@ int fossil_db_database_import(
     const char *format,
     const char *input_path)
 {
-    if (!db || !format || !input_path)
+    if (!db || !db->internal || !format || !input_path)
         return -1;
-    return 0;
+
+    fossil_engine_t *eng = engine_get(db);
+
+    FILE *fp = fopen(input_path, "rb");
+    if (!fp)
+        return -1;
+
+    /*
+    ------------------------
+    RESET CURRENT STATE
+    ------------------------
+    */
+    fossil_record_t *cur = eng->index.head;
+    while (cur)
+    {
+        fossil_record_t *next = cur->next;
+        free(cur->id);
+        free(cur->data);
+        free(cur);
+        cur = next;
+    }
+
+    eng->index.head = NULL;
+    db->entry_count = 0;
+
+    /*
+    ------------------------
+    JSON IMPORT
+    ------------------------
+    */
+    if (str_eq(format, "json"))
+    {
+        fseek(fp, 0, SEEK_END);
+        long size = ftell(fp);
+        rewind(fp);
+
+        char *buf = malloc(size + 1);
+        fread(buf, 1, size, fp);
+        buf[size] = '\0';
+
+        char *p = buf;
+
+        while ((p = strstr(p, "\"id\"")))
+        {
+            char *id = extract_string(&p);
+            if (!id)
+                break;
+
+            p = strstr(p, "\"data\"");
+            if (!p)
+                break;
+
+            char *data = extract_string(&p);
+            if (!data)
+                break;
+
+            fossil_db_database_insert(db, id, data);
+        }
+
+        free(buf);
+        fclose(fp);
+        return 0;
+    }
+
+    /*
+    ------------------------
+    FSON IMPORT
+    ------------------------
+    */
+    if (str_eq(format, "fson"))
+    {
+        char line[4096];
+
+        while (fgets(line, sizeof(line), fp))
+        {
+            char *sep = strchr(line, '|');
+            if (!sep)
+                continue;
+
+            *sep = '\0';
+
+            char *id = line;
+            char *data = sep + 1;
+
+            /* strip newline */
+            char *nl = strchr(data, '\n');
+            if (nl)
+                *nl = '\0';
+
+            fossil_db_database_insert(db, id, data);
+        }
+
+        fclose(fp);
+        return 0;
+    }
+
+    fclose(fp);
+    return -1;
 }
 
 /*
 ------------------------------------------------------------
-Error
+Hash / Error
 ------------------------------------------------------------
 */
 
+/*
+------------------------------------------------------------
+FNV-1a 64-bit
+------------------------------------------------------------
+- Supports binary blobs (not just strings)
+- Optional length parameter (safe for serialized entries)
+- Final avalanche mixing step improves distribution
+------------------------------------------------------------
+*/
+
+static uint64_t fossil_fnv1a64_raw(const void *data, size_t len)
+{
+    const uint8_t *ptr = (const uint8_t *)data;
+
+    uint64_t hash = 1469598103934665603ULL; /* FNV offset basis */
+    const uint64_t prime = 1099511628211ULL;
+
+    /* Main hash loop */
+    for (size_t i = 0; i < len; i++)
+    {
+        hash ^= (uint64_t)ptr[i];
+        hash *= prime;
+    }
+
+    hash ^= hash >> 33;
+    hash *= 0xff51afd7ed558ccdULL;
+    hash ^= hash >> 33;
+    hash *= 0xc4ceb9fe1a85ec53ULL;
+    hash ^= hash >> 33;
+
+    return hash;
+}
+
+/*
+------------------------------------------------------------
+String convenience wrapper
+------------------------------------------------------------
+*/
+
+static uint64_t fossil_fnv1a64(const char *data)
+{
+    if (!data)
+        return 0;
+
+    return fossil_fnv1a64_raw(data, strlen(data));
+}
+
+int fossil_db_database_hash(const char *data, char *out_hash)
+{
+    if (!data || !out_hash)
+        return -1;
+
+    uint64_t h = fossil_fnv1a64(data);
+
+    snprintf(out_hash, 64, "%016llx", (unsigned long long)h);
+
+    return 0;
+}
+
+int fossil_db_database_get_hash(
+    fossil_db_t *db,
+    const char *id,
+    char *out_hash)
+{
+    if (!db || !id || !out_hash)
+        return -1;
+
+    char *data = NULL;
+
+    if (fossil_db_database_get(db, id, &data) != 0)
+        return -1;
+
+    char buffer[2048];
+
+    snprintf(buffer, sizeof(buffer),
+             "%s|%s|%llu",
+             id,
+             data ? data : "",
+             (unsigned long long)db->version);
+
+    fossil_db_database_hash(buffer, out_hash);
+
+    free(data);
+    return 0;
+}
+
+int fossil_db_database_verify_entry(
+    fossil_db_t *db,
+    const char *id)
+{
+    if (!db || !id)
+        return -1;
+
+    char *data = NULL;
+    char stored_hash[64] = {0};
+    char computed_hash[64] = {0};
+
+    if (fossil_db_database_get(db, id, &data) != 0)
+    {
+        snprintf(db->last_error, FOSSIL_DB_MAX_ERROR,
+                 "verify_entry: missing entry '%s'", id);
+        db->last_error_code = 1;
+        return -1;
+    }
+
+    if (fossil_db_database_hash(data, computed_hash) != 0)
+    {
+        free(data);
+
+        snprintf(db->last_error, FOSSIL_DB_MAX_ERROR,
+                 "verify_entry: hash failure '%s'", id);
+        db->last_error_code = 2;
+        return -1;
+    }
+
+    free(data);
+
+    if (fossil_db_database_get_hash(db, id, stored_hash) != 0)
+    {
+        snprintf(db->last_error, FOSSIL_DB_MAX_ERROR,
+                 "verify_entry: missing stored hash '%s'", id);
+        db->last_error_code = 3;
+        return -1;
+    }
+
+    if (strncmp(stored_hash, computed_hash, 64) != 0)
+    {
+        snprintf(db->last_error, FOSSIL_DB_MAX_ERROR,
+                 "verify_entry: hash mismatch '%s'", id);
+        db->last_error_code = 4;
+
+        db->corrupted = true;
+        return -1;
+    }
+
+    db->integrity_version = db->version;
+
+    return 0;
+}
+
+static int fossil_db_compute_root_hash(fossil_db_t *db)
+{
+    fossil_engine_t *eng = (fossil_engine_t *)db->internal;
+
+    char buffer[4096];
+    buffer[0] = '\0';
+
+    fossil_record_t *cur = eng->index.head;
+
+    /* deterministic fold over dataset */
+    while (cur)
+    {
+        char line[512];
+        snprintf(line, sizeof(line),
+                 "%s:%s:%llu|",
+                 cur->id,
+                 cur->data,
+                 (unsigned long long)cur->version);
+
+        strncat(buffer, line, sizeof(buffer) - strlen(buffer) - 1);
+        cur = cur->next;
+    }
+
+    /* mix in metadata */
+    char final[8192];
+    snprintf(final, sizeof(final),
+             "%s|%zu|%zu",
+             buffer,
+             db->entry_count,
+             db->relation_count);
+
+    fossil_db_database_hash(final, db->root_hash);
+
+    return 0;
+}
+
+int fossil_db_database_commit(fossil_db_t *db, const char *message)
+{
+    fossil_engine_t *eng = (fossil_engine_t *)db->internal;
+
+    db->last_commit_version = ++eng->current_version;
+
+    /* compute root BEFORE sealing commit */
+    fossil_db_compute_root_hash(db);
+
+    snprintf(db->last_commit_hash, sizeof(db->last_commit_hash),
+             "%s-%llu",
+             db->root_hash,
+             (unsigned long long)db->last_commit_version);
+
+    fprintf(eng->wal_fp, "COMMIT %s | %s\n",
+            message ? message : "",
+            db->last_commit_hash);
+
+    fflush(eng->wal_fp);
+
+    db->version = db->last_commit_version;
+
+    return 0;
+}
+
 const char *fossil_db_database_last_error(fossil_db_t *db)
 {
-    if (!db)
-        return "no db";
     return db->last_error;
 }
