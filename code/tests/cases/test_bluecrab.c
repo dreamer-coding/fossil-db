@@ -24,7 +24,7 @@
  */
 #include <fossil/pizza/framework.h>
 
-#include "fossil/crabdb/framework.h"
+#include "fossil/db/framework.h"
 
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Utilities
