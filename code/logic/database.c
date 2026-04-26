@@ -236,7 +236,7 @@ int fossil_db_database_get(
     if (!rec)
         return -1;
 
-    *out_data = strdup(rec->data);
+    *out_data = custom_strdup(rec->data);
     return 0;
 }
 
@@ -252,7 +252,7 @@ int fossil_db_database_update(
         return -1;
 
     free(rec->data);
-    rec->data = strdup(data);
+    rec->data = custom_strdup(data);
     rec->version = ++eng->current_version;
 
     fprintf(eng->wal_fp, "UPDATE %s %s\n", id, data);
