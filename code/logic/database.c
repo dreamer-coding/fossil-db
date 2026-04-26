@@ -838,6 +838,8 @@ int fossil_db_database_import(
         return -1;
 
     fossil_engine_t *eng = engine_get(db);
+    if (!eng)
+        return -1;
 
     FILE *fp = fopen(input_path, "rb");
     if (!fp)
@@ -868,13 +870,49 @@ int fossil_db_database_import(
     */
     if (str_eq(format, "json"))
     {
-        fseek(fp, 0, SEEK_END);
-        long size = ftell(fp);
-        rewind(fp);
+        if (fseek(fp, 0, SEEK_END) != 0) {
+            fclose(fp);
+            return -1;
+        }
 
-        char *buf = malloc(size + 1);
-        fread(buf, 1, size, fp);
-        buf[size] = '\0';
+        long size = ftell(fp);
+        if (size < 0) {
+            fclose(fp);
+            return -1;
+        }
+
+        if (fseek(fp, 0, SEEK_SET) != 0) {
+            fclose(fp);
+            return -1;
+        }
+
+        size_t usize = (size_t)size;
+
+        char *buf = malloc(usize + 1);
+        if (!buf) {
+            fclose(fp);
+            return -1;
+        }
+
+        size_t total_read = 0;
+        while (total_read < usize)
+        {
+            size_t n = fread(buf + total_read, 1, usize - total_read, fp);
+
+            if (n == 0)
+            {
+                if (ferror(fp)) {
+                    free(buf);
+                    fclose(fp);
+                    return -1;
+                }
+                break; /* EOF */
+            }
+
+            total_read += n;
+        }
+
+        buf[total_read] = '\0';
 
         char *p = buf;
 
@@ -885,14 +923,21 @@ int fossil_db_database_import(
                 break;
 
             p = strstr(p, "\"data\"");
-            if (!p)
+            if (!p) {
+                free(id);
                 break;
+            }
 
             char *data = extract_string(&p);
-            if (!data)
+            if (!data) {
+                free(id);
                 break;
+            }
 
             fossil_db_database_insert(db, id, data);
+
+            free(id);
+            free(data);
         }
 
         free(buf);
@@ -920,12 +965,16 @@ int fossil_db_database_import(
             char *id = line;
             char *data = sep + 1;
 
-            /* strip newline */
             char *nl = strchr(data, '\n');
             if (nl)
                 *nl = '\0';
 
             fossil_db_database_insert(db, id, data);
+        }
+
+        if (ferror(fp)) {
+            fclose(fp);
+            return -1;
         }
 
         fclose(fp);
