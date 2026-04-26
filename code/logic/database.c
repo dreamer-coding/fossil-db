@@ -338,13 +338,49 @@ Query / Search (baseline)
 ------------------------------------------------------------
 */
 
+static char *fossil_strdup(const char *s)
+{
+    if (!s)
+        return NULL;
+
+    size_t len = strlen(s) + 1;
+
+    char *copy = (char *)malloc(len);
+    if (!copy)
+        return NULL;
+
+    memcpy(copy, s, len);
+    return copy;
+}
+
 int fossil_db_database_query(
     fossil_db_t *db,
     const char *query,
     char **out_result)
 {
-    /* placeholder for DSL engine hook */
-    *out_result = strdup(query);
+    if (!db || !query || !out_result)
+        return -1;
+
+    if (!db->opened || db->corrupted)
+        return -1;
+
+    /* ------------------------------------------------------------
+       DSL ENGINE HOOK (future: .crab parser / execution engine)
+       ------------------------------------------------------------
+    */
+    if (db->internal)
+    {
+        /*
+        return fossil_dsl_execute(db->internal, query, out_result);
+        */
+    }
+
+    /* fallback: echo query safely */
+    *out_result = fossil_strdup(query);
+
+    if (!*out_result)
+        return -1;
+
     return 0;
 }
 
@@ -355,31 +391,84 @@ int fossil_db_database_search(
     fossil_db_database_search_result **results,
     size_t *count)
 {
-    (void)field;
+    if (!db || !value || !results || !count)
+        return -1;
 
-    fossil_engine_t *eng = engine_get(db);
+    if (!db->opened || db->corrupted)
+        return -1;
 
-    size_t cap = 16;
-    *results = malloc(sizeof(**results) * cap);
+    *results = NULL;
     *count = 0;
 
+    size_t cap = 16;
+
+    *results = (fossil_db_database_search_result *)
+        malloc(sizeof(**results) * cap);
+
+    if (!*results)
+        return -1;
+
+    /* ------------------------------------------------------------
+       ENGINE ACCESS
+       ------------------------------------------------------------
+    */
+    fossil_engine_t *eng = engine_get(db);
+    if (!eng)
+        return -1;
+
     fossil_record_t *cur = eng->index.head;
+
     while (cur)
     {
-        if (strstr(cur->data, value))
+        /* --------------------------------------------------------
+           FIELD-AWARE MATCHING
+           --------------------------------------------------------
+        */
+        int match = 0;
+
+        if (!field)
+        {
+            /* generic search */
+            match = strstr(cur->data, value) != NULL;
+        }
+        else
+        {
+            /* future structured fields:
+               fallback: match id or full blob */
+            match =
+                strstr(cur->id, field) &&
+                strstr(cur->data, value);
+        }
+
+        if (match)
         {
             if (*count >= cap)
             {
                 cap *= 2;
-                *results = realloc(*results, sizeof(**results) * cap);
+
+                void *tmp = realloc(*results,
+                    sizeof(**results) * cap);
+
+                if (!tmp)
+                    return -1;
+
+                *results = tmp;
             }
 
-            strncpy((*results)[*count].id, cur->id, FOSSIL_DB_MAX_NAME);
-            (*results)[*count].score = 1.0f;
-            strncpy((*results)[*count].snippet, cur->data, 127);
+            fossil_db_database_search_result *r =
+                &(*results)[*count];
+
+            strncpy(r->id, cur->id, FOSSIL_DB_MAX_NAME - 1);
+            r->id[FOSSIL_DB_MAX_NAME - 1] = '\0';
+
+            r->score = 1.0f;
+
+            strncpy(r->snippet, cur->data, sizeof(r->snippet) - 1);
+            r->snippet[sizeof(r->snippet) - 1] = '\0';
 
             (*count)++;
         }
+
         cur = cur->next;
     }
 
