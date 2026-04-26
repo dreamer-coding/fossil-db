@@ -392,23 +392,6 @@ Versioning / Integrity
 ------------------------------------------------------------
 */
 
-int fossil_db_database_commit(
-    fossil_db_t *db,
-    const char *message)
-{
-    fossil_engine_t *eng = engine_get(db);
-
-    db->last_commit_version = ++eng->current_version;
-
-    snprintf(db->last_commit_hash, sizeof(db->last_commit_hash),
-             "commit-%llu", (unsigned long long)db->last_commit_version);
-
-    fprintf(eng->wal_fp, "COMMIT %s\n", message);
-    fflush(eng->wal_fp);
-
-    return 0;
-}
-
 int fossil_db_database_checkout(
     fossil_db_t *db,
     const char *version)
