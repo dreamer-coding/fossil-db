@@ -1120,37 +1120,58 @@ static int fossil_db_compute_root_hash(fossil_db_t *db)
 
 int fossil_db_database_commit(fossil_db_t *db, const char *message)
 {
+    if (!db || !db->internal)
+        return -1;
+
     fossil_engine_t *eng = (fossil_engine_t *)db->internal;
+
+    if (!eng->wal_fp)
+        return -1;
 
     db->last_commit_version = ++eng->current_version;
 
     /* compute root BEFORE sealing commit */
-    fossil_db_compute_root_hash(db);
-
-    size_t root_len = strnlen(db->root_hash, sizeof(db->last_commit_hash));
-
-/* leave room for "-<20 digits>" + null */
-size_t max_root = sizeof(db->last_commit_hash) - 1 - 21;
-
-if (root_len > max_root)
-    root_len = max_root;
-
-    /* copy root hash safely */
-    memcpy(db->last_commit_hash, db->root_hash, root_len);
-    
-    /* append version */
-    int written = snprintf(
-        db->last_commit_hash + root_len,
-        sizeof(db->last_commit_hash) - root_len,
-        "-%llu",
-        (unsigned long long)db->last_commit_version);
-    
-    if (written < 0)
+    if (fossil_db_compute_root_hash(db) != 0)
         return -1;
 
-    fprintf(eng->wal_fp, "COMMIT %s | %s\n",
-            message ? message : "",
-            db->last_commit_hash);
+    /* correct bound: root_hash, not last_commit_hash */
+    size_t root_len = strnlen(db->root_hash, sizeof(db->root_hash));
+
+    /*
+     * Reserve space for:
+     * "-" + up to 20 digits (uint64) + null terminator
+     */
+    const size_t suffix_reserve = 1 + 20 + 1; /* '-' + digits + '\0' */
+    size_t max_root = sizeof(db->last_commit_hash) - suffix_reserve;
+
+    if (root_len > max_root) {
+        root_len = max_root;
+    }
+
+    /* safe copy */
+    memcpy(db->last_commit_hash, db->root_hash, root_len);
+    db->last_commit_hash[root_len] = '\0';
+
+    /* append version safely */
+    size_t remaining = sizeof(db->last_commit_hash) - root_len;
+
+    int written = snprintf(
+        db->last_commit_hash + root_len,
+        remaining,
+        "-%llu",
+        (unsigned long long)db->last_commit_version);
+
+    if (written < 0 || (size_t)written >= remaining) {
+        /* truncation or encoding error */
+        return -1;
+    }
+
+    /* WAL write */
+    if (fprintf(eng->wal_fp, "COMMIT %s | %s\n",
+                message ? message : "",
+                db->last_commit_hash) < 0) {
+        return -1;
+    }
 
     fflush(eng->wal_fp);
 
