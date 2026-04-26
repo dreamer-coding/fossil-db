@@ -1,20 +1,87 @@
 # **Fossil DB Library by Fossil Logic**
 
-Blue Crab is a lightweight, portable key-value database built for speed, efficiency, and traceable data integrity.   It offers multiple interfaces to fit different workflows: **MyShell** for SQL-like commands with structured FSON queries, **NoShell** for direct key-value operations backed by a git-chain commit model, and **CacheShell** for in-memory caching with TTL and optional FSON serialization. Powered by the **git-chain experiment**, every change in Blue Crab can be versioned, branched, and merged like source code —  
-enabling transparent history, rollback, and auditability. The integrated **FSON type system** provides self-describing, schema-aware data structures for both simple and complex records.  
+## CrabDB Overview
+
+**CrabDB** is a lightweight, embeddable database engine designed for deterministic behavior, strong data integrity, and minimal operational overhead. Built around a unified internal engine, CrabDB provides structured data storage with version tracking, write-ahead logging (WAL), and portable serialization.
+
+Rather than splitting into separate systems, CrabDB exposes multiple operational modes on top of the same core: a structured query interface, a direct key-value layer, and an optional in-memory cache layer. Every operation flows through the same engine, ensuring consistency, traceability, and reproducibility across all workflows.
+
+At its foundation, CrabDB uses a **log-driven architecture** with deterministic hashing and versioning. Each mutation updates the database state, producing a verifiable root hash and commit record. This enables reliable auditing, rollback, and integrity verification without external tooling.
+
+CrabDB integrates a lightweight structured format (**FSON**) for representing records, allowing both simple key-value storage and more complex, self-describing data without requiring rigid schemas.
+
+---
 
 ## Key Features
 
-| **Feature**                     | **MyShell**                                                                                                                                         | **NoShell**                                                                                                                                                     | **CacheShell**                                                                                                                                    |
-|---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Portability & Cross-Platform** | Fully cross-platform, designed for integration across Linux, macOS, and Windows with minimal dependencies.                                          | Portable and dependency-light, works consistently across OSes and embedded systems.                                                                              | Lightweight and portable; in-memory cache functions identically across supported platforms.                                                       |
-| **Interface**                    | SQL-like command interface with support for structured FSON queries and schema reflection.                                                          | Minimalist key-value interface now extended with FSON-based structured records and git-chain commit tracking.                                                    | Key-value and TTL-based interface, FSON-encoded for cross-shell interoperability.                                                                 |
-| **CRUD Operations**              | Insert, find, update, and delete data using SQL-like commands, with git-chain-backed transactional history.                                          | Perform direct CRUD operations with git-chain commit tracking and FSON record serialization for full auditability.                                               | Insert, get, update, and remove cache entries; optionally commit snapshots into git-chain for audit persistence.                                  |
-| **Backup and Restore**           | Backup and restore now handled via git-chain commits, enabling branchable database states and rollbacks.                                            | Supports backup and restore through git-chain synchronization; each commit stores FSON diffs for efficient version tracking.                                     | Optional persistence through git-chain snapshots; supports branch-based cache state restoration.                                                  |
-| **API**                          | Intuitive C API supporting FSON object handling, commit/branch operations, and query execution layers.                                              | Simple C API for direct CRUD and commit operations; includes git-chain and FSON helper utilities for structured data encoding/decoding.                          | Lightweight API for in-memory caching and TTL; includes optional FSON serialization hooks for structured cache objects.                           |
-| **Memory Management**             | Optimized for large datasets with internal FSON caching and incremental git-chain commit diffing to reduce memory footprint.                        | Memory-efficient design; uses incremental FSON serialization and diff-based commit tracking to minimize data duplication.                                         | Efficient in-memory storage with periodic cleanup; supports TTL-based reclamation and optional FSON compression for cache entries.                |
-| **Database Management**          | Full support for create, open, close, branch, merge, and delete operations via git-chain; each state stored as a structured FSON snapshot.            | Supports open, close, sync, and merge of git-chain-backed databases; provides FSON-based schema introspection and consistency checks.                            | Simple cache lifecycle management with optional git-chain commit/merge support for replicable cache state management.                             |
+- **Portability & Cross-Platform**
+  - Fully portable C implementation with minimal dependencies
+  - Builds cleanly across Linux, macOS, Windows, and embedded targets
+  - Consistent behavior across toolchains and compilers
 
+- **Unified Engine Architecture**
+  - Single internal engine drives all database operations
+  - Subsystems operate on the engine (not the other way around)
+  - Clear separation between API layer and execution core
+
+- **Multiple Operational Modes**
+  - Structured query mode for FSON-backed record operations
+  - Direct key-value mode for low-level CRUD access
+  - Cache mode for fast in-memory operations with optional TTL support
+
+- **CRUD Operations**
+  - Insert, read, update, and delete across all modes
+  - Deterministic state transitions through the engine
+  - WAL-backed mutation tracking for durability
+
+- **Versioning & Integrity**
+  - Every mutation increments a global version counter
+  - Root hash generated from deterministic state folding
+  - Supports verification, auditability, and rollback semantics
+
+- **Write-Ahead Logging (WAL)**
+  - All changes recorded before final commit
+  - Enables crash recovery and replay capability
+  - Lightweight append-only log format
+
+- **Backup and Restore**
+  - File-level backup with safe copy semantics
+  - Atomic restore via temporary staging file replacement
+  - Version state preserved across restore operations
+
+- **FSON Structured Data**
+  - Self-describing record format for flexible schemas
+  - Supports both simple key-value and structured records
+  - Enables interoperability across all database modes
+
+- **Memory Management**
+  - Explicit allocation and ownership rules
+  - Linked-record in-memory index model
+  - Optional cache layer with TTL-based cleanup
+
+- **Database Lifecycle Management**
+  - Create, open, close, delete, and compact operations
+  - Compaction reduces logical fragmentation and refreshes state
+  - Verification hooks for integrity checking and corruption detection
+
+---
+
+## Design Principles
+
+- **Engine-Centric Architecture**  
+  All functionality is driven by a single internal engine. Higher-level interfaces are thin layers, not separate systems.
+
+- **Deterministic State**  
+  Database state is reproducible via versioning and hashing, enabling verification and auditability.
+
+- **Minimal Abstraction Leakage**  
+  Subsystems (storage, indexing, WAL) operate on the engine — never the other way around.
+
+- **Portable by Default**  
+  Strict C implementation with predictable behavior across platforms and toolchains.
+
+- **Structured Without Complexity**  
+  FSON provides flexible, self-describing data without introducing heavy schema enforcement.
 ## ***Prerequisites***
 
 To get started, ensure you have the following installed:
@@ -33,14 +100,14 @@ Add the `fossil-crabdb.wrap` file in your `subprojects` directory and include th
 
 ```ini
 [wrap-git]
-url = https://github.com/fossillogic/fossil-crabdb.git
+url = https://github.com/fossillogic/fossil-db.git
 revision = v0.2.5
 
 [provide]
-dependency_names = fossil-crabdb
+dependency_names = fossil-db
 ```
 
-**Note**: For the best experience, always use the latest releases. Visit the [releases](https://github.com/fossillogic/fossil-crabdb/releases) page for the latest versions.
+**Note**: For the best experience, always use the latest releases. Visit the [releases](https://github.com/fossillogic/fossil-db/releases) page for the latest versions.
 
 ## Configure Options
 
