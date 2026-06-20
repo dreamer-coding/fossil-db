@@ -267,16 +267,16 @@ FOSSIL_TEST(c_test_noshell_lock_unlock_is_locked) {
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
 FOSSIL_TEST_GROUP(c_noshell_database_tests) {
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_create_open_delete);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_insert_find_remove);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_insert_with_id);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_update);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_backup_restore);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_count_and_size);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_first_next_document);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_verify_database);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_validate_helpers);
-    FOSSIL_TEST_ADD(c_noshell_fixture, c_test_noshell_lock_unlock_is_locked);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_create_open_delete);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_insert_find_remove);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_insert_with_id);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_update);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_backup_restore);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_count_and_size);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_first_next_document);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_verify_database);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_validate_helpers);
+    FOSSIL_ADD_TEST(c_noshell_fixture, c_test_noshell_lock_unlock_is_locked);
 
-    FOSSIL_TEST_REGISTER(c_noshell_fixture);
+    FOSSIL_ADD_SUITE(c_noshell_fixture);
 } // end of tests

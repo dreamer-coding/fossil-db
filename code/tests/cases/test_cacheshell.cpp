@@ -305,20 +305,20 @@ FOSSIL_TEST(cpp_test_cacheshell_init_with_limit) {
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
 FOSSIL_TEST_GROUP(cpp_cacheshell_database_tests) {
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_set_and_get);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_set_with_ttl_and_expire);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_expire_and_ttl);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_touch_and_evict);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_clear_and_count);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_exists);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_set_and_get_binary);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_get_nonexistent_key);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_memory_usage);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_stats);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_iterate);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_threadsafe_toggle);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_persistence_save_load);
-    FOSSIL_TEST_ADD(cpp_cacheshell_fixture, cpp_test_cacheshell_init_with_limit);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_set_and_get);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_set_with_ttl_and_expire);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_expire_and_ttl);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_touch_and_evict);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_clear_and_count);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_exists);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_set_and_get_binary);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_get_nonexistent_key);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_memory_usage);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_stats);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_iterate);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_threadsafe_toggle);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_persistence_save_load);
+    FOSSIL_ADD_TEST(cpp_cacheshell_fixture, cpp_test_cacheshell_init_with_limit);
 
-    FOSSIL_TEST_REGISTER(cpp_cacheshell_fixture);
+    FOSSIL_ADD_SUITE(cpp_cacheshell_fixture);
 } // end of tests
