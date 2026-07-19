@@ -34,7 +34,7 @@ Add the `fossil-crabdb.wrap` file in your `subprojects` directory and include th
 ```ini
 [wrap-git]
 url = https://github.com/fossillogic/fossil-crabdb.git
-revision = v0.2.5
+revision = v1.0.0
 
 [provide]
 dependency_names = fossil-crabdb
