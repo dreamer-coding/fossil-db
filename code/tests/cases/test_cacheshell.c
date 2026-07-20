@@ -17,12 +17,12 @@
  * under the License.
  *
  * Author: Michael Gene Brockus (Dreamer)
- * Date: 04/05/2014
+ * Date: 04/05/2013
  *
- * Copyright (C) 2014-2025 Fossil Logic. All rights reserved.
+ * Copyright (C) 2013-Current Fossil Logic. All rights reserved.
  * -----------------------------------------------------------------------------
  */
-#include <fossil/pizza/framework.h>
+#include <fossil/maip/framework.h>
 
 #include "fossil/crabdb/framework.h"
 
@@ -303,20 +303,20 @@ FOSSIL_TEST(c_test_cacheshell_init_with_limit) {
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
 FOSSIL_TEST_GROUP(c_cacheshell_database_tests) {
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_set_and_get);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_set_with_ttl_and_expire);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_expire_and_ttl);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_touch_and_evict);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_clear_and_count);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_exists);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_set_and_get_binary);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_get_nonexistent_key);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_memory_usage);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_stats);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_iterate);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_threadsafe_toggle);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_persistence_save_load);
-    FOSSIL_TEST_ADD(c_cacheshell_fixture, c_test_cacheshell_init_with_limit);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_set_and_get);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_set_with_ttl_and_expire);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_expire_and_ttl);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_touch_and_evict);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_clear_and_count);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_exists);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_set_and_get_binary);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_get_nonexistent_key);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_memory_usage);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_stats);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_iterate);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_threadsafe_toggle);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_persistence_save_load);
+    FOSSIL_ADD_TEST(c_cacheshell_fixture, c_test_cacheshell_init_with_limit);
 
-    FOSSIL_TEST_REGISTER(c_cacheshell_fixture);
+    FOSSIL_ADD_SUITE(c_cacheshell_fixture);
 } // end of tests

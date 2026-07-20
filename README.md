@@ -19,7 +19,7 @@ enabling transparent history, rollback, and auditability. The integrated **FSON 
 
 To get started, ensure you have the following installed:
 
-- **Meson Build System**: If you don’t have Meson `1.8.0` or newer installed, follow the installation instructions on the official [Meson website](https://mesonbuild.com/Getting-meson.html).
+- **Meson Build System**: If you don’t have Meson `1.10.0` or newer installed, follow the installation instructions on the official [Meson website](https://mesonbuild.com/Getting-meson.html).
 
 ### Adding Dependency
 
@@ -34,7 +34,7 @@ Add the `fossil-crabdb.wrap` file in your `subprojects` directory and include th
 ```ini
 [wrap-git]
 url = https://github.com/fossillogic/fossil-crabdb.git
-revision = v0.2.5
+revision = v1.0.0
 
 [provide]
 dependency_names = fossil-crabdb

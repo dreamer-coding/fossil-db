@@ -17,12 +17,12 @@
  * under the License.
  *
  * Author: Michael Gene Brockus (Dreamer)
- * Date: 04/05/2014
+ * Date: 04/05/2013
  *
- * Copyright (C) 2014-2025 Fossil Logic. All rights reserved.
+ * Copyright (C) 2013-Current Fossil Logic. All rights reserved.
  * -----------------------------------------------------------------------------
  */
-#include <fossil/pizza/framework.h>
+#include <fossil/maip/framework.h>
 
 #include "fossil/crabdb/framework.h"
 
@@ -369,23 +369,23 @@ FOSSIL_TEST(c_test_myshell_check_integrity_null) {
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
 FOSSIL_TEST_GROUP(c_myshell_database_tests) {
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_open_create_close);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_commit_branch_checkout);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_errstr);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_put_get_del);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_put_all_types);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_put_invalid_type);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_get_not_found);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_get_buffer_too_small);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_del_not_found);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_del_twice);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_stage_unstage);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_backup_restore);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_open_invalid_path);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_create_existing_file);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_backup_restore_null_args);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_diff_null_args);
-    FOSSIL_TEST_ADD(c_myshell_fixture, c_test_myshell_check_integrity_null);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_open_create_close);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_commit_branch_checkout);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_errstr);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_put_get_del);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_put_all_types);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_put_invalid_type);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_get_not_found);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_get_buffer_too_small);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_del_not_found);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_del_twice);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_stage_unstage);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_backup_restore);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_open_invalid_path);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_create_existing_file);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_backup_restore_null_args);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_diff_null_args);
+    FOSSIL_ADD_TEST(c_myshell_fixture, c_test_myshell_check_integrity_null);
 
-    FOSSIL_TEST_REGISTER(c_myshell_fixture);
+    FOSSIL_ADD_SUITE(c_myshell_fixture);
 } // end of tests
