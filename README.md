@@ -25,19 +25,19 @@ To get started, ensure you have the following installed:
 
 #### Adding via Meson Git Wrap
 
-To add a git-wrap, place a `.wrap` file in `subprojects` with the Git repo URL and revision, then use `dependency('fossil-crabdb')` in `meson.build` so Meson can fetch and build it automatically.
+To add a git-wrap, place a `.wrap` file in `subprojects` with the Git repo URL and revision, then use `dependency('fossil-db')` in `meson.build` so Meson can fetch and build it automatically.
 
 #### Integrate the Dependency:
 
-Add the `fossil-crabdb.wrap` file in your `subprojects` directory and include the following content:
+Add the `fossil-db.wrap` file in your `subprojects` directory and include the following content:
 
 ```ini
 [wrap-git]
-url = https://github.com/fossillogic/fossil-crabdb.git
-revision = v1.0.0
+url = https://github.com/fossillogic/fossil-db.git
+revision = v1.0.1
 
 [provide]
-dependency_names = fossil-crabdb
+dependency_names = fossil-db
 ```
 
 **Note**: For the best experience, always use the latest releases. Visit the [releases](https://github.com/fossillogic/fossil-crabdb/releases) page for the latest versions.
