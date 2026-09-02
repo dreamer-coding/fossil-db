@@ -1,19 +1,36 @@
-# ***Blue Crab by Fossil Logic***
+# CrabDB
 
-Blue Crab is a lightweight, portable key-value database built for speed, efficiency, and traceable data integrity.   It offers multiple interfaces to fit different workflows: **MyShell** for SQL-like commands with structured FSON queries, **NoShell** for direct key-value operations backed by a git-chain commit model, and **CacheShell** for in-memory caching with TTL and optional FSON serialization. Powered by the **git-chain experiment**, every change in Blue Crab can be versioned, branched, and merged like source code —  
-enabling transparent history, rollback, and auditability. The integrated **FSON type system** provides self-describing, schema-aware data structures for both simple and complex records.  
+CrabDB is a lightweight, embedded relational database engine designed for efficient data storage and retrieval in C applications. It provides a comprehensive API for managing databases, tables, records, and queries with a focus on performance, reliability, and simplicity.
 
 ## Key Features
 
-| **Feature**                     | **MyShell**                                                                                                                                         | **NoShell**                                                                                                                                                     | **CacheShell**                                                                                                                                    |
-|---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Portability & Cross-Platform** | Fully cross-platform, designed for integration across Linux, macOS, and Windows with minimal dependencies.                                          | Portable and dependency-light, works consistently across OSes and embedded systems.                                                                              | Lightweight and portable; in-memory cache functions identically across supported platforms.                                                       |
-| **Interface**                    | SQL-like command interface with support for structured FSON queries and schema reflection.                                                          | Minimalist key-value interface now extended with FSON-based structured records and git-chain commit tracking.                                                    | Key-value and TTL-based interface, FSON-encoded for cross-shell interoperability.                                                                 |
-| **CRUD Operations**              | Insert, find, update, and delete data using SQL-like commands, with git-chain-backed transactional history.                                          | Perform direct CRUD operations with git-chain commit tracking and FSON record serialization for full auditability.                                               | Insert, get, update, and remove cache entries; optionally commit snapshots into git-chain for audit persistence.                                  |
-| **Backup and Restore**           | Backup and restore now handled via git-chain commits, enabling branchable database states and rollbacks.                                            | Supports backup and restore through git-chain synchronization; each commit stores FSON diffs for efficient version tracking.                                     | Optional persistence through git-chain snapshots; supports branch-based cache state restoration.                                                  |
-| **API**                          | Intuitive C API supporting FSON object handling, commit/branch operations, and query execution layers.                                              | Simple C API for direct CRUD and commit operations; includes git-chain and FSON helper utilities for structured data encoding/decoding.                          | Lightweight API for in-memory caching and TTL; includes optional FSON serialization hooks for structured cache objects.                           |
-| **Memory Management**             | Optimized for large datasets with internal FSON caching and incremental git-chain commit diffing to reduce memory footprint.                        | Memory-efficient design; uses incremental FSON serialization and diff-based commit tracking to minimize data duplication.                                         | Efficient in-memory storage with periodic cleanup; supports TTL-based reclamation and optional FSON compression for cache entries.                |
-| **Database Management**          | Full support for create, open, close, branch, merge, and delete operations via git-chain; each state stored as a structured FSON snapshot.            | Supports open, close, sync, and merge of git-chain-backed databases; provides FSON-based schema introspection and consistency checks.                            | Simple cache lifecycle management with optional git-chain commit/merge support for replicable cache state management.                             |
+- Multi-table database support with flexible schema definition
+- Record-based storage with typed field values
+- Query support for flexible data retrieval and filtering
+- Transaction management for ACID compliance
+- Comprehensive error handling and status reporting
+- Support for multiple data types including integers, floats, strings, booleans, and more
+
+## Primary Components
+
+- Database: Top-level container for tables and records
+- Table: Structured collection of records with defined fields
+- Record: Individual data row with typed field values
+- Query: Advanced data retrieval and filtering mechanism
+- Transaction: Atomic operations ensuring data consistency
+
+## Usage Pattern
+
+1. Create or open a database using `fossil_db_crabdb_create()`
+2. Create tables with `fossil_db_crabdb_table_create()`
+3. Insert records using `fossil_db_crabdb_record_insert()`
+4. Query data using `fossil_db_crabdb_query_*()` functions
+5. Manage transactions with `fossil_db_crabdb_transaction_*()` functions
+6. Close the database with `fossil_db_crabdb_close()`
+
+## Overview
+
+CrabDB is intended for embedded and application-level use cases where a compact relational database is needed without the overhead of a full server-based database system. It provides the core building blocks for schema-driven storage, efficient queries, and safe transactional behavior in native C programs.
 
 ## ***Prerequisites***
 

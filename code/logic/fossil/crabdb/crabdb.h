@@ -33,6 +33,39 @@
 extern "C" {
 #endif
 
+/* ============================================================
+ * CrabDB - Lightweight Embedded Relational Database
+ * ============================================================
+ * 
+ * CrabDB is a lightweight, embedded relational database engine designed for
+ * efficient data storage and retrieval in C applications. It provides a 
+ * comprehensive API for managing databases, tables, records, and queries.
+ *
+ * Key Features:
+ * - Multi-table database support with flexible schema definition
+ * - Record-based storage with typed field values
+ * - Query support for flexible data retrieval and filtering
+ * - Transaction management for ACID compliance
+ * - Comprehensive error handling and status reporting
+ * - Support for multiple data types (integers, floats, strings, booleans, etc.)
+ *
+ * Primary Components:
+ * - Database: Top-level container for tables and records
+ * - Table: Structured collection of records with defined fields
+ * - Record: Individual data row with typed field values
+ * - Query: Advanced data retrieval and filtering mechanism
+ * - Transaction: Atomic operations ensuring data consistency
+ *
+ * Usage Pattern:
+ * 1. Create or open a database using fossil_db_crabdb_create()
+ * 2. Create tables with fossil_db_crabdb_table_create()
+ * 3. Insert records using fossil_db_crabdb_record_insert()
+ * 4. Query data using fossil_db_crabdb_query_*() functions
+ * 5. Manage transactions with fossil_db_crabdb_transaction_*() functions
+ * 6. Close database with fossil_db_crabdb_close()
+ *
+ * ============================================================
+ */
 
 /* ============================================================
  * Version
