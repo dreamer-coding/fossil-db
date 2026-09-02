@@ -22,694 +22,1081 @@
  * Copyright (C) 2013-Current Fossil Logic. All rights reserved.
  * -----------------------------------------------------------------------------
  */
-#ifndef FOSSIL_DB_CRABDB_H
-#define FOSSIL_DB_CRABDB_H
+#ifndef FOSSIL_DB_BLUECRAB_H
+#define FOSSIL_DB_BLUECRAB_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* ============================================================
- * Blue Crab DB — Core Database Engine
- * ============================================================
- *
- * Blue Crab DB
- *
- * A cross-platform C database and persistent storage library
- * built on SQLite.
- *
- * Database files:
- *     *.crab
- *
- * Query language files:
- *     *.crabql
- *
- * CrabQL is intentionally outside of this core API.
- *
- * Design:
- *     - String-based type identifiers
- *     - Runtime values
- *     - Runtime configuration
- *     - No public type/operator enums
- *     - C-first API
- *     - C++ compatible
- *     - SQLite-backed persistence
- *
- * ============================================================ */
-
 
 /* ============================================================
- * Opaque Handles
+ * Version
  * ============================================================ */
 
-typedef struct fossil_db_crabdb_s        fossil_db_crabdb_t;
-typedef struct fossil_db_crabdb_value_s  fossil_db_crabdb_value_t;
-typedef struct fossil_db_crabdb_result_s fossil_db_crabdb_result_t;
+#define FOSSIL_DB_CRABDB_VERSION_MAJOR 0
+#define FOSSIL_DB_CRABDB_VERSION_MINOR 1
+#define FOSSIL_DB_CRABDB_VERSION_PATCH 0
 
+#define FOSSIL_DB_CRABDB_VERSION \
+    "0.1.0"
 
 /* ============================================================
- * Built-in Type Identifiers
- * ============================================================
- *
- * These are identifiers rather than enums.
- *
- * Integer:
- *     i8, i16, i32, i64
- *     u8, u16, u32, u64
- *
- * Numeric:
- *     f32, f64
- *
- * Representation:
- *     hex, oct, bin
- *
- * General:
- *     cstr, char, bool
- *
- * Semantic:
- *     size, datetime, duration
- *
- * Dynamic:
- *     any, null
- *
+ * Forward declarations
  * ============================================================ */
 
-#define FOSSIL_DB_CRABDB_TYPE_I8        "i8"
-#define FOSSIL_DB_CRABDB_TYPE_I16       "i16"
-#define FOSSIL_DB_CRABDB_TYPE_I32       "i32"
-#define FOSSIL_DB_CRABDB_TYPE_I64       "i64"
+typedef struct fossil_db_crabdb_s
+    fossil_db_crabdb_t;
 
-#define FOSSIL_DB_CRABDB_TYPE_U8        "u8"
-#define FOSSIL_DB_CRABDB_TYPE_U16       "u16"
-#define FOSSIL_DB_CRABDB_TYPE_U32       "u32"
-#define FOSSIL_DB_CRABDB_TYPE_U64       "u64"
+typedef struct fossil_db_crabdb_table_s
+    fossil_db_crabdb_table_t;
 
-#define FOSSIL_DB_CRABDB_TYPE_HEX       "hex"
-#define FOSSIL_DB_CRABDB_TYPE_OCT       "oct"
-#define FOSSIL_DB_CRABDB_TYPE_BIN       "bin"
+typedef struct fossil_db_crabdb_record_s
+    fossil_db_crabdb_record_t;
 
-#define FOSSIL_DB_CRABDB_TYPE_F32       "f32"
-#define FOSSIL_DB_CRABDB_TYPE_F64       "f64"
+typedef struct fossil_db_crabdb_field_s
+    fossil_db_crabdb_field_t;
 
-#define FOSSIL_DB_CRABDB_TYPE_CSTR      "cstr"
-#define FOSSIL_DB_CRABDB_TYPE_CHAR      "char"
-#define FOSSIL_DB_CRABDB_TYPE_BOOL      "bool"
+typedef struct fossil_db_crabdb_value_s
+    fossil_db_crabdb_value_t;
 
-#define FOSSIL_DB_CRABDB_TYPE_SIZE      "size"
-#define FOSSIL_DB_CRABDB_TYPE_DATETIME  "datetime"
-#define FOSSIL_DB_CRABDB_TYPE_DURATION  "duration"
+typedef struct fossil_db_crabdb_query_s
+    fossil_db_crabdb_query_t;
 
-#define FOSSIL_DB_CRABDB_TYPE_ANY       "any"
-#define FOSSIL_DB_CRABDB_TYPE_NULL      "null"
+typedef struct fossil_db_crabdb_result_s
+    fossil_db_crabdb_result_t;
 
-
-/* ============================================================
- * Common Identifiers
- * ============================================================ */
-
-#define FOSSIL_DB_CRABDB_ORDER_ASC      "asc"
-#define FOSSIL_DB_CRABDB_ORDER_DESC     "desc"
-
-#define FOSSIL_DB_CRABDB_OPTION_TRUE    "true"
-#define FOSSIL_DB_CRABDB_OPTION_FALSE   "false"
-
+typedef struct fossil_db_crabdb_transaction_s
+    fossil_db_crabdb_transaction_t;
 
 /* ============================================================
  * Status
  * ============================================================ */
 
-#define FOSSIL_DB_CRABDB_OK             0
-#define FOSSIL_DB_CRABDB_ERROR          -1
-#define FOSSIL_DB_CRABDB_INVALID        -2
-#define FOSSIL_DB_CRABDB_NOT_FOUND      -3
-#define FOSSIL_DB_CRABDB_EXISTS         -4
-#define FOSSIL_DB_CRABDB_TYPE_ERROR     -5
-#define FOSSIL_DB_CRABDB_CONSTRAINT     -6
-#define FOSSIL_DB_CRABDB_SCHEMA         -7
-#define FOSSIL_DB_CRABDB_TRANSACTION    -8
-#define FOSSIL_DB_CRABDB_STORAGE        -9
-#define FOSSIL_DB_CRABDB_IO             -10
-#define FOSSIL_DB_CRABDB_BUSY           -11
-#define FOSSIL_DB_CRABDB_LOCKED         -12
-#define FOSSIL_DB_CRABDB_UNSUPPORTED    -13
+typedef enum fossil_db_crabdb_status_e {
+    FOSSIL_DB_CRABDB_SUCCESS = 0,
 
+    FOSSIL_DB_CRABDB_ERROR,
+    FOSSIL_DB_CRABDB_INVALID_ARGUMENT,
+    FOSSIL_DB_CRABDB_OUT_OF_MEMORY,
+    FOSSIL_DB_CRABDB_NOT_FOUND,
+    FOSSIL_DB_CRABDB_ALREADY_EXISTS,
+    FOSSIL_DB_CRABDB_EXISTS,
+    FOSSIL_DB_CRABDB_INVALID_STATE,
+    FOSSIL_DB_CRABDB_IO_ERROR,
+    FOSSIL_DB_CRABDB_CORRUPTED,
+    FOSSIL_DB_CRABDB_READ_ONLY,
+    FOSSIL_DB_CRABDB_TRANSACTION_ERROR,
+    FOSSIL_DB_CRABDB_QUERY_ERROR
+} fossil_db_crabdb_status_t;
 
 /* ============================================================
- * Database Lifecycle
+ * Value Types
+ * ============================================================ */
+
+typedef enum fossil_db_crabdb_type_e {
+    FOSSIL_DB_CRABDB_TYPE_NULL = 0,
+
+    FOSSIL_DB_CRABDB_TYPE_I8,
+    FOSSIL_DB_CRABDB_TYPE_I16,
+    FOSSIL_DB_CRABDB_TYPE_I32,
+    FOSSIL_DB_CRABDB_TYPE_I64,
+
+    FOSSIL_DB_CRABDB_TYPE_U8,
+    FOSSIL_DB_CRABDB_TYPE_U16,
+    FOSSIL_DB_CRABDB_TYPE_U32,
+    FOSSIL_DB_CRABDB_TYPE_U64,
+
+    FOSSIL_DB_CRABDB_TYPE_F32,
+    FOSSIL_DB_CRABDB_TYPE_F64,
+
+    FOSSIL_DB_CRABDB_TYPE_HEX,
+    FOSSIL_DB_CRABDB_TYPE_OCT,
+    FOSSIL_DB_CRABDB_TYPE_BIN,
+
+    FOSSIL_DB_CRABDB_TYPE_CHAR,
+    FOSSIL_DB_CRABDB_TYPE_CSTR,
+    FOSSIL_DB_CRABDB_TYPE_BOOL,
+
+    FOSSIL_DB_CRABDB_TYPE_SIZE,
+    FOSSIL_DB_CRABDB_TYPE_DATETIME,
+    FOSSIL_DB_CRABDB_TYPE_DURATION,
+
+    FOSSIL_DB_CRABDB_TYPE_ANY
+} fossil_db_crabdb_type_t;
+
+/* ============================================================
+ * Database
  * ============================================================ */
 
 /**
- * @brief Creates a new persistent CrabDB database.
+ * Creates a new Blue Crab database at the specified path.
  *
- * The database is stored as a .crab file.
+ * This function initializes a new database handle and creates the backing
+ * storage file if it does not already exist. The resulting handle is returned
+ * through @p db and must be closed with fossil_db_crabdb_close() or released
+ * with fossil_db_crabdb_destroy() when no longer needed.
+ *
+ * @param db Receives the newly created database handle on success.
+ * @param path Filesystem path to the database file to create.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_create(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_create(
     fossil_db_crabdb_t **db,
     const char *path
 );
 
 /**
- * @brief Opens an existing CrabDB database.
+ * Opens an existing Blue Crab database stored on disk.
+ *
+ * The database is loaded from @p path and an initialized handle is returned in
+ * @p db. If the path does not exist, the implementation may report a failure
+ * status instead of creating a new database.
+ *
+ * @param db Receives the opened database handle on success.
+ * @param path Path to the existing database file.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_open(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_open(
     fossil_db_crabdb_t **db,
     const char *path
 );
 
 /**
- * @brief Closes a CrabDB database.
- */
-int fossil_db_crabdb_close(
-    fossil_db_crabdb_t *db
-);
-
-/**
- * @brief Flushes pending database operations.
- */
-int fossil_db_crabdb_flush(
-    fossil_db_crabdb_t *db
-);
-
-/**
- * @brief Synchronizes persistent database state.
- */
-int fossil_db_crabdb_sync(
-    fossil_db_crabdb_t *db
-);
-
-/**
- * @brief Checks whether a database file exists.
- */
-bool fossil_db_crabdb_exists(
-    const char *path
-);
-
-/**
- * @brief Removes a CrabDB database file.
- */
-int fossil_db_crabdb_remove(
-    const char *path
-);
-
-
-/* ============================================================
- * Type Information
- * ============================================================ */
-
-/**
- * @brief Checks whether a type identifier is supported.
- */
-bool fossil_db_crabdb_type_supported(
-    const char *type_id
-);
-
-/**
- * @brief Returns the native size of a type.
+ * Creates a database in memory instead of on disk.
  *
- * Returns 0 for variable-sized or unknown types.
+ * This is useful for ephemeral or test-only workloads that do not need a
+ * persistent file-backed store. The returned handle behaves like a regular
+ * database handle, but all data is kept in volatile memory.
+ *
+ * @param db Receives the in-memory database handle on success.
+ * @return Status code indicating success or failure.
  */
-size_t fossil_db_crabdb_type_sizeof(
-    const char *type_id
+fossil_db_crabdb_status_t
+fossil_db_crabdb_open_memory(
+    fossil_db_crabdb_t **db
 );
 
 /**
- * @brief Returns whether a type is numeric.
+ * Closes an open database and releases any active connection resources.
+ *
+ * After a successful close, the database handle should not be used again unless
+ * it is reopened. This function is distinct from fossil_db_crabdb_destroy(),
+ * which releases the handle object itself.
+ *
+ * @param db Database handle to close.
+ * @return Status code indicating whether the close operation succeeded.
  */
-bool fossil_db_crabdb_type_numeric(
-    const char *type_id
+fossil_db_crabdb_status_t
+fossil_db_crabdb_close(
+    fossil_db_crabdb_t *db
 );
 
+/**
+ * Releases the database handle object itself.
+ *
+ * This function frees the memory associated with the handle and must be used
+ * when a caller is done with the object allocated by the library. It is often
+ * paired with fossil_db_crabdb_close() when a database was opened or created.
+ *
+ * @param db Database handle to destroy.
+ */
+void
+fossil_db_crabdb_destroy(
+    fossil_db_crabdb_t *db
+);
 
 /* ============================================================
- * Value API
+ * Database Information
  * ============================================================ */
 
 /**
- * @brief Initializes a database value.
+ * Returns the Blue Crab library version string.
+ *
+ * The returned pointer is owned by the library and should not be freed by the
+ * caller. Its format is implementation-defined but is commonly used for
+ * compatibility checks and debugging output.
+ *
+ * @return Null-terminated version string.
  */
-int fossil_db_crabdb_value_init(
-    fossil_db_crabdb_value_t *value
+const char *
+fossil_db_crabdb_version(void);
+
+/**
+ * Converts a status code into a readable textual description.
+ *
+ * This helper is intended for diagnostics, logging, and reporting errors in a
+ * human-readable format.
+ *
+ * @param status Status code to translate.
+ * @return Pointer to a static string describing the status.
+ */
+const char *
+fossil_db_crabdb_status_string(
+    fossil_db_crabdb_status_t status
 );
 
 /**
- * @brief Clears a database value.
+ * Retrieves the most recent error message associated with a database handle.
+ *
+ * The function stores the diagnostic text in @p message, allowing callers to
+ * inspect the exact cause of a failed operation. If no error is recorded, the
+ * message pointer may be null or empty depending on the implementation.
+ *
+ * @param db Database handle whose last error should be queried.
+ * @param message Receives a pointer to the last error message string.
+ * @return Status code indicating whether an error message was successfully
+ *         retrieved.
  */
-void fossil_db_crabdb_value_clear(
-    fossil_db_crabdb_value_t *value
+fossil_db_crabdb_status_t
+fossil_db_crabdb_last_error(
+    fossil_db_crabdb_t *db,
+    const char **message
 );
-
-/**
- * @brief Sets a value using a CrabDB type identifier.
- */
-int fossil_db_crabdb_value_set(
-    fossil_db_crabdb_value_t *value,
-    const char *type_id,
-    const void *data,
-    size_t size
-);
-
-/**
- * @brief Retrieves the type identifier of a value.
- */
-const char *fossil_db_crabdb_value_type(
-    const fossil_db_crabdb_value_t *value
-);
-
-/**
- * @brief Retrieves the raw value data.
- */
-const void *fossil_db_crabdb_value_data(
-    const fossil_db_crabdb_value_t *value
-);
-
-/**
- * @brief Retrieves the value size.
- */
-size_t fossil_db_crabdb_value_size(
-    const fossil_db_crabdb_value_t *value
-);
-
-/**
- * @brief Converts a value to another CrabDB type.
- */
-int fossil_db_crabdb_value_convert(
-    fossil_db_crabdb_value_t *value,
-    const char *type_id
-);
-
 
 /* ============================================================
- * Table Operations
+ * Tables
  * ============================================================ */
 
 /**
- * @brief Creates a table.
+ * Creates a new table in the database.
+ *
+ * The table name is used as an identifier within the database schema. If a
+ * table with the same name already exists, the operation usually fails with a
+ * duplicate-name status.
+ *
+ * @param db Database handle.
+ * @param name Name of the table to create.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_table_create(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_create_table(
     fossil_db_crabdb_t *db,
-    const char *table
-);
-
-/**
- * @brief Drops a table.
- */
-int fossil_db_crabdb_table_drop(
-    fossil_db_crabdb_t *db,
-    const char *table
-);
-
-/**
- * @brief Checks whether a table exists.
- */
-bool fossil_db_crabdb_table_exists(
-    fossil_db_crabdb_t *db,
-    const char *table
-);
-
-/**
- * @brief Renames a table.
- */
-int fossil_db_crabdb_table_rename(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *name
-);
-
-
-/* ============================================================
- * Column Operations
- * ============================================================ */
-
-/**
- * @brief Adds a column to a table.
- */
-int fossil_db_crabdb_column_add(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column,
-    const char *type_id
-);
-
-/**
- * @brief Removes a column from a table.
- */
-int fossil_db_crabdb_column_drop(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column
-);
-
-/**
- * @brief Renames a column.
- */
-int fossil_db_crabdb_column_rename(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column,
     const char *name
 );
 
 /**
- * @brief Checks whether a column exists.
+ * Removes an existing table and all of its contents from the database.
+ *
+ * This is a destructive operation. After a successful drop, the table name is
+ * no longer available and any records contained within it are deleted.
+ *
+ * @param db Database handle.
+ * @param name Name of the table to drop.
+ * @return Status code indicating success or failure.
  */
-bool fossil_db_crabdb_column_exists(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_drop_table(
     fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column
+    const char *name
 );
 
+/**
+ * Renames an existing table.
+ *
+ * This operation updates the logical name of a table while preserving the data
+ * it contains. The new name must be valid and must not conflict with an
+ * existing table in the database.
+ *
+ * @param db Database handle.
+ * @param old_name Current table name.
+ * @param new_name Desired replacement name.
+ * @return Status code indicating success or failure.
+ */
+fossil_db_crabdb_status_t
+fossil_db_crabdb_rename_table(
+    fossil_db_crabdb_t *db,
+    const char *old_name,
+    const char *new_name
+);
+
+/**
+ * Checks whether a table with the provided name exists in the database.
+ *
+ * This is a convenience helper for schema inspection and validation before
+ * insert, select, or update operations.
+ *
+ * @param db Database handle.
+ * @param name Name of the table to look up.
+ * @return true if the table exists, otherwise false.
+ */
+bool
+fossil_db_crabdb_table_exists(
+    fossil_db_crabdb_t *db,
+    const char *name
+);
 
 /* ============================================================
- * CRUD Operations
+ * Records
  * ============================================================ */
 
 /**
- * @brief Inserts a record into a table.
+ * Inserts a new record into the specified table.
+ *
+ * The record structure is passed by pointer and is stored using the table's
+ * schema or the database's internal logic. If the record violates constraints,
+ * the insertion fails and the database returns an error status.
+ *
+ * @param db Database handle.
+ * @param table Target table name.
+ * @param record Record to insert.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_insert(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_insert(
     fossil_db_crabdb_t *db,
     const char *table,
-    const char *columns,
-    const fossil_db_crabdb_value_t *values,
-    size_t count
+    fossil_db_crabdb_record_t *record
 );
 
 /**
- * @brief Retrieves a record by its identifier.
+ * Updates an existing record in the target table.
+ *
+ * This operation replaces the current contents of the record identified by the
+ * provided record data or key with the updated values contained in @p record.
+ *
+ * @param db Database handle.
+ * @param table Target table name.
+ * @param record Updated record contents.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_get(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_update(
     fossil_db_crabdb_t *db,
     const char *table,
-    const char *id,
+    fossil_db_crabdb_record_t *record
+);
+
+/**
+ * Deletes an existing record from the specified table.
+ *
+ * The matching record is removed using its identifying information and the
+ * database is updated accordingly. If no matching record is found, the call may
+ * return a not-found status depending on the implementation.
+ *
+ * @param db Database handle.
+ * @param table Table containing the record.
+ * @param record Record identifying the row to delete.
+ * @return Status code indicating success or failure.
+ */
+fossil_db_crabdb_status_t
+fossil_db_crabdb_delete(
+    fossil_db_crabdb_t *db,
+    const char *table,
+    fossil_db_crabdb_record_t *record
+);
+
+/**
+ * Selects all records from a table and returns them as a result set.
+ *
+ * The returned result object contains the rows retrieved from @p table. The
+ * caller is responsible for destroying the result using
+ * fossil_db_crabdb_result_destroy() once it is no longer needed.
+ *
+ * @param db Database handle.
+ * @param table Name of the table to query.
+ * @param result Receives the result object containing matching records.
+ * @return Status code indicating success or failure.
+ */
+fossil_db_crabdb_status_t
+fossil_db_crabdb_select(
+    fossil_db_crabdb_t *db,
+    const char *table,
     fossil_db_crabdb_result_t **result
 );
 
-/**
- * @brief Finds records matching an operation.
- */
-int fossil_db_crabdb_find(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column,
-    const char *operator_id,
-    const fossil_db_crabdb_value_t *value,
-    fossil_db_crabdb_result_t **result
-);
-
-/**
- * @brief Updates records matching an operation.
- */
-int fossil_db_crabdb_update(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column,
-    const fossil_db_crabdb_value_t *value,
-    const char *where_column,
-    const char *operator_id,
-    const fossil_db_crabdb_value_t *where_value
-);
-
-/**
- * @brief Deletes records matching an operation.
- */
-int fossil_db_crabdb_delete(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column,
-    const char *operator_id,
-    const fossil_db_crabdb_value_t *value
-);
-
-
 /* ============================================================
- * Bulk Operations
+ * Values
  * ============================================================ */
 
 /**
- * @brief Inserts multiple records.
- */
-int fossil_db_crabdb_insert_many(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const fossil_db_crabdb_value_t *values,
-    size_t rows,
-    size_t columns
-);
-
-
-/* ============================================================
- * Operators
- * ============================================================ */
-
-/**
- * @brief Checks whether an operator identifier is supported.
+ * Allocates and initializes a value object with the specified type.
  *
- * Core operators:
+ * The value is created as an empty container of the given type and is returned
+ * in @p value for later assignment or use in records and query results.
  *
- *     eq
- *     neq
- *     lt
- *     lte
- *     gt
- *     gte
- *     between
- *     in
- *     not_in
- *     like
- *     not_like
- *     is_null
- *     not_null
- *     contains
- *     starts_with
- *     ends_with
+ * @param value Receives the newly created value instance.
+ * @param type Data type to assign to the value.
+ * @return Status code indicating success or failure.
  */
-bool fossil_db_crabdb_operator_supported(
-    const char *operator_id
-);
-
-
-/* ============================================================
- * Ordering
- * ============================================================ */
-
-/**
- * @brief Sets ordering for a result.
- */
-int fossil_db_crabdb_order(
-    fossil_db_crabdb_result_t *result,
-    const char *column,
-    const char *order_id
+fossil_db_crabdb_status_t
+fossil_db_crabdb_value_create(
+    fossil_db_crabdb_value_t **value,
+    fossil_db_crabdb_type_t type
 );
 
 /**
- * @brief Limits the number of records in a result.
+ * Releases memory associated with a value object.
+ *
+ * This function should be called for every value allocated via
+ * fossil_db_crabdb_value_create() to avoid leaks.
+ *
+ * @param value Value to destroy.
  */
-int fossil_db_crabdb_limit(
-    fossil_db_crabdb_result_t *result,
-    size_t limit
-);
-
-/**
- * @brief Sets the result offset.
- */
-int fossil_db_crabdb_offset(
-    fossil_db_crabdb_result_t *result,
-    size_t offset
-);
-
-
-/* ============================================================
- * Result Operations
- * ============================================================ */
-
-/**
- * @brief Returns the number of records in a result.
- */
-size_t fossil_db_crabdb_result_count(
-    const fossil_db_crabdb_result_t *result
-);
-
-/**
- * @brief Retrieves a value from a result.
- */
-int fossil_db_crabdb_result_value(
-    const fossil_db_crabdb_result_t *result,
-    size_t row,
-    const char *column,
+void
+fossil_db_crabdb_value_destroy(
     fossil_db_crabdb_value_t *value
 );
 
 /**
- * @brief Releases a result.
- */
-void fossil_db_crabdb_result_free(
-    fossil_db_crabdb_result_t *result
-);
-
-
-/* ============================================================
- * Index Operations
- * ============================================================ */
-
-/**
- * @brief Creates an index.
- */
-int fossil_db_crabdb_index_create(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column
-);
-
-/**
- * @brief Creates an index with configuration.
+ * Returns the runtime type tag of a value.
  *
- * Example configuration:
+ * This allows callers to safely inspect and interpret the payload stored within
+ * a value object before reading or writing it.
  *
- *     "unique", true
+ * @param value Value whose type is requested.
+ * @return Type enumeration for the value.
  */
-int fossil_db_crabdb_index_create_config(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column,
-    const char *option,
-    bool value
+fossil_db_crabdb_type_t
+fossil_db_crabdb_value_type(
+    const fossil_db_crabdb_value_t *value
 );
-
-/**
- * @brief Drops an index.
- */
-int fossil_db_crabdb_index_drop(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column
-);
-
-/**
- * @brief Checks whether an index exists.
- */
-bool fossil_db_crabdb_index_exists(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column
-);
-
 
 /* ============================================================
  * Transactions
  * ============================================================ */
 
 /**
- * @brief Begins a transaction.
+ * Begins a transaction for the database.
+ *
+ * A transaction groups a sequence of operations so that they can be committed
+ * together or rolled back atomically if an error occurs. Transaction semantics
+ * depend on the underlying database implementation.
+ *
+ * @param db Database handle.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_transaction_begin(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_begin(
     fossil_db_crabdb_t *db
 );
 
 /**
- * @brief Commits the current transaction.
+ * Commits the current transaction.
+ *
+ * If all operations in the transaction succeeded, this function makes the
+ * changes permanent and closes the active transaction scope.
+ *
+ * @param db Database handle.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_transaction_commit(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_commit(
     fossil_db_crabdb_t *db
 );
 
 /**
- * @brief Rolls back the current transaction.
+ * Rolls back the current transaction.
+ *
+ * Any changes made since the transaction began are discarded, restoring the
+ * database to its previous state.
+ *
+ * @param db Database handle.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_transaction_rollback(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_rollback(
     fossil_db_crabdb_t *db
 );
-
-/**
- * @brief Creates a transaction savepoint.
- */
-int fossil_db_crabdb_transaction_savepoint(
-    fossil_db_crabdb_t *db,
-    const char *name
-);
-
-/**
- * @brief Releases a transaction savepoint.
- */
-int fossil_db_crabdb_transaction_release(
-    fossil_db_crabdb_t *db,
-    const char *name
-);
-
-/**
- * @brief Rolls back to a transaction savepoint.
- */
-int fossil_db_crabdb_transaction_rollback_to(
-    fossil_db_crabdb_t *db,
-    const char *name
-);
-
 
 /* ============================================================
- * Introspection
+ * Query
  * ============================================================ */
 
 /**
- * @brief Returns database information.
+ * Executes a query against the database and returns a result object.
+ *
+ * This function is used for statements that produce output, such as SELECT-like
+ * queries. The query string is passed as text and the matching rows are stored
+ * in the output result structure returned via @p result.
+ *
+ * @param db Database handle.
+ * @param query Query text to execute.
+ * @param result Receives the result set generated by the query.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_info(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_query(
     fossil_db_crabdb_t *db,
+    const char *query,
     fossil_db_crabdb_result_t **result
 );
 
 /**
- * @brief Returns table information.
+ * Executes a non-result query on the database.
+ *
+ * This variant is intended for operations that do not return rows, such as
+ * INSERT, UPDATE, DELETE, CREATE TABLE, or other schema changes. It performs
+ * the requested database action and reports success or failure via a status
+ * code.
+ *
+ * @param db Database handle.
+ * @param query Command text to execute.
+ * @return Status code indicating success or failure.
  */
-int fossil_db_crabdb_table_info(
+fossil_db_crabdb_status_t
+fossil_db_crabdb_execute(
     fossil_db_crabdb_t *db,
-    const char *table,
-    fossil_db_crabdb_result_t **result
+    const char *query
 );
-
-/**
- * @brief Returns column information.
- */
-int fossil_db_crabdb_column_info(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    const char *column,
-    fossil_db_crabdb_result_t **result
-);
-
-/**
- * @brief Returns index information.
- */
-int fossil_db_crabdb_index_info(
-    fossil_db_crabdb_t *db,
-    const char *table,
-    fossil_db_crabdb_result_t **result
-);
-
 
 /* ============================================================
- * Error Handling
+ * Results
  * ============================================================ */
 
 /**
- * @brief Returns the last CrabDB error message.
+ * Returns the number of elements stored in a result object.
+ *
+ * This is a convenience function for iterating, validating, or reporting the
+ * size of a result set without needing to inspect the internal structure.
+ *
+ * @param result Result set to inspect.
+ * @return Number of rows or entries in the result.
  */
-const char *fossil_db_crabdb_error(
-    const fossil_db_crabdb_t *db
+size_t
+fossil_db_crabdb_result_count(
+    const fossil_db_crabdb_result_t *result
 );
 
 /**
- * @brief Returns a human-readable status description.
+ * Releases memory allocated for a result set.
+ *
+ * Any result object returned by a query or select operation should be destroyed
+ * when no longer required to prevent memory leaks.
+ *
+ * @param result Result object to destroy.
  */
-const char *fossil_db_crabdb_status_string(
-    int status
+void
+fossil_db_crabdb_result_destroy(
+    fossil_db_crabdb_result_t *result
 );
-
 
 #ifdef __cplusplus
 }
+
+#include <string>
+
+namespace fossil {
+
+    namespace database {
+
+        class CrabDB {
+        public:
+            /**
+             * Creates an empty CrabDB wrapper with no attached database handle.
+             *
+             * The object remains inactive until a database is created or opened
+             * by calling create(), open(), or open_memory().
+             */
+            CrabDB()
+                : db_(nullptr)
+            {
+            }
+
+            /**
+             * Creates a CrabDB wrapper and immediately opens or creates the
+             * database at the given filesystem path.
+             *
+             * @param path Filesystem path to the database to create or open.
+             */
+            explicit CrabDB(const char *path)
+                : db_(nullptr)
+            {
+                create(path);
+            }
+
+            /**
+             * Creates a CrabDB wrapper and immediately opens or creates the
+             * database at the given filesystem path.
+             *
+             * @param path Filesystem path to the database to create or open.
+             */
+            explicit CrabDB(const std::string &path)
+                : db_(nullptr)
+            {
+                create(path);
+            }
+
+            /**
+             * Destroys the database instance and releases any owned resources.
+             *
+             * The destructor calls destroy() to ensure the underlying native handle
+             * is cleaned up before the wrapper goes out of scope.
+             */
+            ~CrabDB()
+            {
+                destroy();
+            }
+
+            /**
+             * Returns the library version string for the underlying CrabDB
+             * implementation.
+             *
+             * @return Null-terminated version string.
+             */
+            static const char *version()
+            {
+                return fossil_db_crabdb_version();
+            }
+
+            /**
+             * Converts a CrabDB status code into a descriptive string.
+             *
+             * @param status Status value returned by a CrabDB operation.
+             * @return Human-readable string describing the status code.
+             */
+            static const char *status_string(fossil_db_crabdb_status_t status)
+            {
+                return fossil_db_crabdb_status_string(status);
+            }
+
+            /**
+             * Creates a new database at the supplied path and replaces any current
+             * connection with the newly created one.
+             *
+             * Any previously opened or created database handle is destroyed before
+             * the new database is initialized.
+             *
+             * @param path Path to the database file to create.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t create(const char *path)
+            {
+                destroy();
+                return fossil_db_crabdb_create(&db_, path);
+            }
+
+            /**
+             * Creates a new database at the supplied path and replaces any current
+             * connection with the newly created one.
+             *
+             * @param path Path to the database file to create.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t create(const std::string &path)
+            {
+                destroy();
+                return fossil_db_crabdb_create(&db_, path.c_str());
+            }
+
+            /**
+             * Opens an existing database from the file system and replaces any
+             * current connection.
+             *
+             * @param path Path to the database file to open.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t open(const char *path)
+            {
+                destroy();
+                return fossil_db_crabdb_open(&db_, path);
+            }
+
+            /**
+             * Opens an existing database from the file system and replaces any
+             * current connection.
+             *
+             * @param path Path to the database file to open.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t open(const std::string &path)
+            {
+                destroy();
+                return fossil_db_crabdb_open(&db_, path.c_str());
+            }
+
+            /**
+             * Opens an in-memory database and replaces any current connection.
+             *
+             * This creates a transient database that exists only for the lifetime
+             * of the current handle and is discarded when destroyed or closed.
+             *
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t open_memory()
+            {
+                destroy();
+                return fossil_db_crabdb_open_memory(&db_);
+            }
+
+            /**
+             * Closes the currently open database connection without freeing the
+             * wrapper object itself.
+             *
+             * After a successful close, the internal handle is set to null so the
+             * object can be reused with another create/open call.
+             *
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t close()
+            {
+                if (db_ == nullptr)
+                    return FOSSIL_DB_CRABDB_INVALID_STATE;
+
+                fossil_db_crabdb_status_t status = fossil_db_crabdb_close(db_);
+                if (status == FOSSIL_DB_CRABDB_SUCCESS)
+                    db_ = nullptr;
+                return status;
+            }
+
+            /**
+             * Releases the underlying native database handle and any associated
+             * memory.
+             *
+             * This method is safe to call on an inactive object and resets the
+             * stored pointer to null after destruction.
+             */
+            void destroy()
+            {
+                if (db_ != nullptr) {
+                    fossil_db_crabdb_destroy(db_);
+                    db_ = nullptr;
+                }
+            }
+
+            /**
+             * Retrieves the most recent error message associated with the current
+             * database connection.
+             *
+             * @param message Pointer to receive the null-terminated error string.
+             * @return Status code indicating whether the error message was fetched.
+             */
+            fossil_db_crabdb_status_t last_error(const char **message) const
+            {
+                if (db_ == nullptr)
+                    return FOSSIL_DB_CRABDB_INVALID_STATE;
+                return fossil_db_crabdb_last_error(db_, message);
+            }
+
+            /**
+             * Creates a new table within the current database.
+             *
+             * @param name Name of the table to create.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t create_table(const char *name)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_create_table(db_, name);
+            }
+
+            /**
+             * Creates a new table within the current database.
+             *
+             * @param name Name of the table to create.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t create_table(const std::string &name)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_create_table(db_, name.c_str());
+            }
+
+            /**
+             * Removes an existing table from the current database.
+             *
+             * @param name Name of the table to drop.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t drop_table(const char *name)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_drop_table(db_, name);
+            }
+
+            /**
+             * Removes an existing table from the current database.
+             *
+             * @param name Name of the table to drop.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t drop_table(const std::string &name)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_drop_table(db_, name.c_str());
+            }
+
+            /**
+             * Renames an existing table while preserving its data.
+             *
+             * @param old_name Current table name.
+             * @param new_name New table name to assign.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t rename_table(const char *old_name, const char *new_name)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_rename_table(db_, old_name, new_name);
+            }
+
+            /**
+             * Renames an existing table while preserving its data.
+             *
+             * @param old_name Current table name.
+             * @param new_name New table name to assign.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t rename_table(const std::string &old_name, const std::string &new_name)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_rename_table(db_, old_name.c_str(), new_name.c_str());
+            }
+
+            /**
+             * Checks whether a named table exists in the current database.
+             *
+             * @param name Name of the table to inspect.
+             * @return True if the table exists; otherwise false.
+             */
+            bool table_exists(const char *name) const
+            {
+                return db_ != nullptr && fossil_db_crabdb_table_exists(db_, name);
+            }
+
+            /**
+             * Checks whether a named table exists in the current database.
+             *
+             * @param name Name of the table to inspect.
+             * @return True if the table exists; otherwise false.
+             */
+            bool table_exists(const std::string &name) const
+            {
+                return db_ != nullptr && fossil_db_crabdb_table_exists(db_, name.c_str());
+            }
+
+            /**
+             * Inserts a record into the specified table.
+             *
+             * The ownership and contents of the record are determined by the
+             * underlying database layer and the supplied record instance.
+             *
+             * @param table Name of the table receiving the record.
+             * @param record Record to insert.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t insert(const char *table, fossil_db_crabdb_record_t *record)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_insert(db_, table, record);
+            }
+
+            /**
+             * Inserts a record into the specified table.
+             *
+             * @param table Name of the table receiving the record.
+             * @param record Record to insert.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t insert(const std::string &table, fossil_db_crabdb_record_t *record)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_insert(db_, table.c_str(), record);
+            }
+
+            /**
+             * Updates an existing record in the specified table.
+             *
+             * @param table Name of the table containing the record to update.
+             * @param record Record containing the new values to write.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t update(const char *table, fossil_db_crabdb_record_t *record)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_update(db_, table, record);
+            }
+
+            /**
+             * Updates an existing record in the specified table.
+             *
+             * @param table Name of the table containing the record to update.
+             * @param record Record containing the new values to write.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t update(const std::string &table, fossil_db_crabdb_record_t *record)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_update(db_, table.c_str(), record);
+            }
+
+            /**
+             * Deletes a record from the specified table.
+             *
+             * @param table Name of the table containing the record to remove.
+             * @param record Record describing the row or key to delete.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t delete_record(const char *table, fossil_db_crabdb_record_t *record)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_delete(db_, table, record);
+            }
+
+            /**
+             * Deletes a record from the specified table.
+             *
+             * @param table Name of the table containing the record to remove.
+             * @param record Record describing the row or key to delete.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t delete_record(const std::string &table, fossil_db_crabdb_record_t *record)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_delete(db_, table.c_str(), record);
+            }
+
+            /**
+             * Selects all rows from the given table and returns a result set.
+             *
+             * The caller is responsible for destroying the returned result object
+             * when it is no longer needed.
+             *
+             * @param table Name of the table to query.
+             * @param result Output pointer to receive the result set.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t select(const char *table, fossil_db_crabdb_result_t **result)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_select(db_, table, result);
+            }
+
+            /**
+             * Selects all rows from the given table and returns a result set.
+             *
+             * @param table Name of the table to query.
+             * @param result Output pointer to receive the result set.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t select(const std::string &table, fossil_db_crabdb_result_t **result)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_select(db_, table.c_str(), result);
+            }
+
+            /**
+             * Starts a database transaction.
+             *
+             * Transactions allow multiple changes to be grouped and committed or
+             * rolled back atomically as a single unit.
+             *
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t begin()
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_begin(db_);
+            }
+
+            /**
+             * Commits the current transaction to the database.
+             *
+             * Any changes made since begin() are made permanent when this call
+             * succeeds.
+             *
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t commit()
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_commit(db_);
+            }
+
+            /**
+             * Rolls back the current transaction and discards all pending changes.
+             *
+             * This returns the database to its state at the beginning of the
+             * transaction when the operation succeeds.
+             *
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t rollback()
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_rollback(db_);
+            }
+
+            /**
+             * Executes a raw SQL-like query against the database and returns a
+             * result set if the query produces rows.
+             *
+             * @param query Query string to evaluate.
+             * @param result Output pointer to receive the query result set.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t query(const char *query, fossil_db_crabdb_result_t **result)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_query(db_, query, result);
+            }
+
+            /**
+             * Executes a raw SQL-like query against the database and returns a
+             * result set if the query produces rows.
+             *
+             * @param query Query string to evaluate.
+             * @param result Output pointer to receive the query result set.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t query(const std::string &query, fossil_db_crabdb_result_t **result)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_query(db_, query.c_str(), result);
+            }
+
+            /**
+             * Executes a non-query statement such as DDL or an update operation
+             * that does not return rows.
+             *
+             * @param query Statement to execute.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t execute(const char *query)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_execute(db_, query);
+            }
+
+            /**
+             * Executes a non-query statement such as DDL or an update operation
+             * that does not return rows.
+             *
+             * @param query Statement to execute.
+             * @return Status code indicating success or failure.
+             */
+            fossil_db_crabdb_status_t execute(const std::string &query)
+            {
+                return db_ == nullptr ? FOSSIL_DB_CRABDB_INVALID_STATE
+                                    : fossil_db_crabdb_execute(db_, query.c_str());
+            }
+
+            /**
+             * Returns the raw underlying native database handle.
+             *
+             * This accessor is intended for advanced integration and low-level
+             * operations requiring direct access to the wrapped C API object.
+             *
+             * @return Pointer to the native CrabDB handle or null if no database is active.
+             */
+            fossil_db_crabdb_t *handle() const
+            {
+                return db_;
+            }
+
+        private:
+            fossil_db_crabdb_t *db_;
+        };
+    
+    } // namespace database
+
+} // namespace fossil
+
 #endif
 
-#endif /* FOSSIL_DB_CRABDB_H */
+#endif /* FOSSIL_DB_BLUECRAB_H */
