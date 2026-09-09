@@ -1,10 +1,11 @@
 # CrabDB
 
-CrabDB is a lightweight, embedded C database library with an in-memory table registry, database lifecycle management, typed values, and transaction control. Its implementation is designed around explicit ownership, dynamically sized collections, and clear status reporting.
+CrabDB is a lightweight, embedded C database library with an in-memory table registry, database lifecycle management, typed values, transaction control, and pointer-free file persistence. Its implementation is designed around explicit ownership, dynamically sized collections, and clear status reporting.
 
 ## Key Features
 
 - File-backed and in-memory database creation and opening
+- Pointer-free persistence of tables, fields, records, and values for file-backed databases
 - Dynamic multi-table management, including create, drop, rename, and existence checks
 - Internal table, record, field, value, query, result, transaction, and database structures
 - Typed values with owned dynamically allocated data
@@ -15,9 +16,9 @@ CrabDB is a lightweight, embedded C database library with an in-memory table reg
 
 ## Overview
 
-CrabDB is intended for embedded and application-level use cases where a compact database API is needed without the overhead of a server. A database tracks its path, storage mode, lifecycle state, read-only and transaction state, table registry, affected-row count, status, and a 256-byte error buffer. Tables maintain fields and records with expandable capacities and monotonically increasing record IDs; records associate named values with their owning table.
+CrabDB is intended for embedded and application-level use cases where a compact database API is needed without the overhead of a server. A database tracks its path, storage mode, lifecycle state, read-only and transaction state, table registry, affected-row count, status, and a bounded 256-byte error buffer. Tables maintain dynamically sized field and record collections and monotonically increasing record IDs. Records associate named values with their owning table, fields describe typed and constrained columns, values own dynamically allocated data, queries track parsing state, results provide positioned record collections, and transactions track table state.
 
-The current implementation provides database and table operations, value creation and destruction, status reporting, transaction handling, and record management. Records can be inserted into tables with automatically assigned monotonically increasing IDs, updated by ID, deleted by pointer or ID, and selected through result containers. Record storage grows dynamically as needed, and insert, update, and delete operations update the database affected-row count. Selection returns a result containing the table's record pointers and count; record persistence and field APIs remain separate areas for further implementation.
+The current implementation provides database creation, opening, closing, destruction, status reporting, table management, record management, value creation and destruction, transactions, result containers, and persistence. File-backed databases are serialized in a private pointer-free format when closed, while memory databases remain entirely in memory. Records can be inserted with automatically assigned IDs, updated by ID, deleted by pointer or ID, and selected into results containing record pointers and count information. Dynamic storage grows as needed, and insert, update, and delete operations update the database affected-row count. Field and query structures are defined for continued schema and query API development.
 
 ## ***Prerequisites***
 

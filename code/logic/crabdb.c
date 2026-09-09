@@ -421,6 +421,79 @@ crabdb_free_table(fossil_db_crabdb_table_t *table)
     free(table);
 }
 
+/* Persist the in-memory graph in a pointer-free private format. */
+static bool
+crabdb_save(fossil_db_crabdb_t *db)
+{
+    FILE *file;
+    uint32_t magic = 0x31424443; /* CDB1 */
+    size_t i, j, k;
+
+    if (db->memory || db->path == NULL)
+        return true;
+
+    file = fopen(db->path, "wb");
+    if (file == NULL)
+        return false;
+
+    if (fwrite(&magic, sizeof(magic), 1, file) != 1 ||
+        fwrite(&db->table_count, sizeof(db->table_count), 1, file) != 1)
+        goto failure;
+
+    for (i = 0; i < db->table_count; ++i)
+    {
+        fossil_db_crabdb_table_t *table = db->tables[i];
+        size_t length = strlen(table->name) + 1;
+
+        if (fwrite(&length, sizeof(length), 1, file) != 1 ||
+            fwrite(table->name, 1, length, file) != length ||
+            fwrite(&table->field_count, sizeof(table->field_count), 1, file) != 1)
+            goto failure;
+
+        for (j = 0; j < table->field_count; ++j)
+        {
+            fossil_db_crabdb_field_t *field = table->fields[j];
+            length = strlen(field->name) + 1;
+            if (fwrite(&length, sizeof(length), 1, file) != 1 ||
+                fwrite(field->name, 1, length, file) != length ||
+                fwrite(&field->type, sizeof(field->type), 1, file) != 1 ||
+                fwrite(&field->offset, sizeof(field->offset), 1, file) != 1 ||
+                fwrite(&field->size, sizeof(field->size), 1, file) != 1 ||
+                fwrite(&field->nullable, sizeof(field->nullable), 1, file) != 1 ||
+                fwrite(&field->primary_key, sizeof(field->primary_key), 1, file) != 1 ||
+                fwrite(&field->unique, sizeof(field->unique), 1, file) != 1)
+                goto failure;
+        }
+
+        if (fwrite(&table->record_count, sizeof(table->record_count), 1, file) != 1)
+            goto failure;
+        for (j = 0; j < table->record_count; ++j)
+        {
+            fossil_db_crabdb_record_t *record = table->records[j];
+            if (fwrite(&record->id, sizeof(record->id), 1, file) != 1 ||
+                fwrite(&record->value_count, sizeof(record->value_count), 1, file) != 1)
+                goto failure;
+            for (k = 0; k < record->value_count; ++k)
+            {
+                fossil_db_crabdb_value_t *value = record->values[k];
+                length = strlen(record->names[k]) + 1;
+                if (fwrite(&length, sizeof(length), 1, file) != 1 ||
+                    fwrite(record->names[k], 1, length, file) != length ||
+                    fwrite(&value->type, sizeof(value->type), 1, file) != 1 ||
+                    fwrite(&value->size, sizeof(value->size), 1, file) != 1 ||
+                    (value->size != 0 && fwrite(value->data, 1, value->size, file) != value->size))
+                    goto failure;
+            }
+        }
+    }
+
+    return fclose(file) == 0;
+
+failure:
+    fclose(file);
+    return false;
+}
+
 /* ============================================================
  * Version
  * ============================================================ */
@@ -570,6 +643,12 @@ fossil_db_crabdb_close(
     if (db->closed)
     {
         return FOSSIL_DB_CRABDB_INVALID_STATE;
+    }
+
+    if (!crabdb_save(db))
+    {
+        crabdb_set_error(db, "Unable to persist database.");
+        return FOSSIL_DB_CRABDB_IO_ERROR;
     }
 
     for (i = 0; i < db->table_count; ++i)
