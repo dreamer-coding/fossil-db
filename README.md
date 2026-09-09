@@ -1,36 +1,23 @@
 # CrabDB
 
-CrabDB is a lightweight, embedded relational database engine designed for efficient data storage and retrieval in C applications. It provides a comprehensive API for managing databases, tables, records, and queries with a focus on performance, reliability, and simplicity.
+CrabDB is a lightweight, embedded C database library with an in-memory table registry, database lifecycle management, typed values, and transaction control. Its implementation is designed around explicit ownership, dynamically sized collections, and clear status reporting.
 
 ## Key Features
 
-- Multi-table database support with flexible schema definition
-- Record-based storage with typed field values
-- Query support for flexible data retrieval and filtering
-- Transaction management for ACID compliance
-- Comprehensive error handling and status reporting
-- Support for multiple data types including integers, floats, strings, booleans, and more
-
-## Primary Components
-
-- Database: Top-level container for tables and records
-- Table: Structured collection of records with defined fields
-- Record: Individual data row with typed field values
-- Query: Advanced data retrieval and filtering mechanism
-- Transaction: Atomic operations ensuring data consistency
-
-## Usage Pattern
-
-1. Create or open a database using `fossil_db_crabdb_create()`
-2. Create tables with `fossil_db_crabdb_table_create()`
-3. Insert records using `fossil_db_crabdb_record_insert()`
-4. Query data using `fossil_db_crabdb_query_*()` functions
-5. Manage transactions with `fossil_db_crabdb_transaction_*()` functions
-6. Close the database with `fossil_db_crabdb_close()`
+- File-backed and in-memory database creation and opening
+- Dynamic multi-table management, including create, drop, rename, and existence checks
+- Internal table, record, field, value, query, result, transaction, and database structures
+- Typed values with owned dynamically allocated data
+- Transaction begin, commit, and rollback support for table changes
+- Result containers with count tracking and cleanup
+- Consistent status codes, last-error messages, and bounded error storage
+- Record and query APIs prepared for further implementation
 
 ## Overview
 
-CrabDB is intended for embedded and application-level use cases where a compact relational database is needed without the overhead of a full server-based database system. It provides the core building blocks for schema-driven storage, efficient queries, and safe transactional behavior in native C programs.
+CrabDB is intended for embedded and application-level use cases where a compact database API is needed without the overhead of a server. A database tracks its path, storage mode, lifecycle state, read-only and transaction state, table registry, affected-row count, status, and a 256-byte error buffer. Tables maintain fields and records with expandable capacities and monotonically increasing record IDs; records associate named values with their owning table.
+
+The current implementation provides database and table operations, value creation and destruction, status reporting, transaction handling, and record management. Records can be inserted into tables with automatically assigned monotonically increasing IDs, updated by ID, deleted by pointer or ID, and selected through result containers. Record storage grows dynamically as needed, and insert, update, and delete operations update the database affected-row count. Selection returns a result containing the table's record pointers and count; record persistence and field APIs remain separate areas for further implementation.
 
 ## ***Prerequisites***
 

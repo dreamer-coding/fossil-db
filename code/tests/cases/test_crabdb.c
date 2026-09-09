@@ -209,6 +209,50 @@ FOSSIL_TEST(c_test_crabdb_rollback) {
     remove(file_name);
 }
 
+FOSSIL_TEST(c_test_crabdb_status_strings) {
+    fossil_db_crabdb_status_t status;
+
+    for (status = FOSSIL_DB_CRABDB_SUCCESS;
+         status <= FOSSIL_DB_CRABDB_QUERY_ERROR;
+         status++) {
+        ASSUME_ITS_TRUE(fossil_db_crabdb_status_string(status) != NULL);
+    }
+}
+
+FOSSIL_TEST(c_test_crabdb_value_types) {
+    fossil_db_crabdb_type_t type;
+
+    for (type = FOSSIL_DB_CRABDB_TYPE_NULL;
+         type <= FOSSIL_DB_CRABDB_TYPE_ANY;
+         type++) {
+        fossil_db_crabdb_value_t *value = NULL;
+        fossil_db_crabdb_status_t status =
+            fossil_db_crabdb_value_create(&value, type);
+
+        ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+        ASSUME_ITS_TRUE(value != NULL);
+        ASSUME_ITS_TRUE(fossil_db_crabdb_value_type(value) == type);
+        fossil_db_crabdb_value_destroy(value);
+    }
+}
+
+FOSSIL_TEST(c_test_crabdb_transaction_state_errors) {
+    fossil_db_crabdb_status_t status;
+    fossil_db_crabdb_t *db = NULL;
+
+    status = fossil_db_crabdb_open_memory(&db);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+
+    status = fossil_db_crabdb_commit(db);
+    ASSUME_ITS_TRUE(status != FOSSIL_DB_CRABDB_SUCCESS);
+    status = fossil_db_crabdb_rollback(db);
+    ASSUME_ITS_TRUE(status != FOSSIL_DB_CRABDB_SUCCESS);
+
+    status = fossil_db_crabdb_close(db);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    fossil_db_crabdb_destroy(db);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
@@ -221,6 +265,9 @@ FOSSIL_TEST_GROUP(c_crabdb_database_tests) {
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_open_memory_and_destroy);
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_table_rename_drop);
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_rollback);
+    FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_status_strings);
+    FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_value_types);
+    FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_transaction_state_errors);
 
     FOSSIL_ADD_SUITE(c_crabdb_fixture);
 } // end of tests

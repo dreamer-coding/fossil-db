@@ -814,6 +814,30 @@ bool fossil_db_crabdb_table_exists(
  * Records
  * ============================================================ */
 
+static fossil_db_crabdb_status_t
+crabdb_grow_records(
+    fossil_db_crabdb_table_t *table)
+{
+    size_t capacity;
+    fossil_db_crabdb_record_t **records;
+
+    capacity = table->record_capacity == 0
+                   ? FOSSIL_DB_CRABDB_INITIAL_TABLE_CAPACITY
+                   : table->record_capacity * 2;
+
+    records = realloc(table->records, sizeof(*records) * capacity);
+
+    if (records == NULL)
+    {
+        return FOSSIL_DB_CRABDB_OUT_OF_MEMORY;
+    }
+
+    table->records = records;
+    table->record_capacity = capacity;
+
+    return FOSSIL_DB_CRABDB_SUCCESS;
+}
+
 fossil_db_crabdb_status_t
 fossil_db_crabdb_insert(
     fossil_db_crabdb_t *db,
@@ -836,15 +860,27 @@ fossil_db_crabdb_insert(
         return FOSSIL_DB_CRABDB_NOT_FOUND;
     }
 
-    /*
-     * Record storage will be implemented once the public
-     * record/field API is established.
-     */
-    crabdb_set_error(
-        db,
-        "Record storage is not yet implemented.");
+    {
+        fossil_db_crabdb_table_t *instance = crabdb_find_table(db, table);
 
-    return FOSSIL_DB_CRABDB_ERROR;
+        if (instance->record_count >= instance->record_capacity)
+        {
+            fossil_db_crabdb_status_t status = crabdb_grow_records(instance);
+
+            if (status != FOSSIL_DB_CRABDB_SUCCESS)
+            {
+                crabdb_set_error(db, "Unable to allocate record storage.");
+                return status;
+            }
+        }
+
+        record->id = ++instance->next_record_id;
+        record->table = instance;
+        instance->records[instance->record_count++] = record;
+        db->affected_rows = 1;
+    }
+
+    return FOSSIL_DB_CRABDB_SUCCESS;
 }
 
 fossil_db_crabdb_status_t
@@ -865,11 +901,26 @@ fossil_db_crabdb_update(
         return FOSSIL_DB_CRABDB_NOT_FOUND;
     }
 
-    crabdb_set_error(
-        db,
-        "Record storage is not yet implemented.");
+    {
+        fossil_db_crabdb_table_t *instance = crabdb_find_table(db, table);
+        size_t i;
 
-    return FOSSIL_DB_CRABDB_ERROR;
+        for (i = 0; i < instance->record_count; ++i)
+        {
+            if (instance->records[i]->id == record->id)
+            {
+                if (instance->records[i] != record)
+                    crabdb_free_record(instance->records[i]);
+
+                record->table = instance;
+                instance->records[i] = record;
+                db->affected_rows = 1;
+                return FOSSIL_DB_CRABDB_SUCCESS;
+            }
+        }
+    }
+
+    return FOSSIL_DB_CRABDB_NOT_FOUND;
 }
 
 fossil_db_crabdb_status_t
@@ -890,11 +941,28 @@ fossil_db_crabdb_delete(
         return FOSSIL_DB_CRABDB_NOT_FOUND;
     }
 
-    crabdb_set_error(
-        db,
-        "Record storage is not yet implemented.");
+    {
+        fossil_db_crabdb_table_t *instance = crabdb_find_table(db, table);
+        size_t i;
 
-    return FOSSIL_DB_CRABDB_ERROR;
+        for (i = 0; i < instance->record_count; ++i)
+        {
+            if (instance->records[i] == record ||
+                instance->records[i]->id == record->id)
+            {
+                crabdb_free_record(instance->records[i]);
+
+                for (; i + 1 < instance->record_count; ++i)
+                    instance->records[i] = instance->records[i + 1];
+
+                instance->records[--instance->record_count] = NULL;
+                db->affected_rows = 1;
+                return FOSSIL_DB_CRABDB_SUCCESS;
+            }
+        }
+    }
+
+    return FOSSIL_DB_CRABDB_NOT_FOUND;
 }
 
 fossil_db_crabdb_status_t
@@ -917,11 +985,38 @@ fossil_db_crabdb_select(
         return FOSSIL_DB_CRABDB_NOT_FOUND;
     }
 
-    crabdb_set_error(
-        db,
-        "Record storage is not yet implemented.");
+    {
+        fossil_db_crabdb_table_t *instance = crabdb_find_table(db, table);
+        fossil_db_crabdb_result_t *output;
 
-    return FOSSIL_DB_CRABDB_ERROR;
+        output = calloc(1, sizeof(*output));
+
+        if (output == NULL)
+            return FOSSIL_DB_CRABDB_OUT_OF_MEMORY;
+
+        if (instance->record_count != 0)
+        {
+            output->records = malloc(
+                sizeof(*output->records) * instance->record_count);
+
+            if (output->records == NULL)
+            {
+                free(output);
+                return FOSSIL_DB_CRABDB_OUT_OF_MEMORY;
+            }
+
+            memcpy(
+                output->records,
+                instance->records,
+                sizeof(*output->records) * instance->record_count);
+        }
+
+        output->count = instance->record_count;
+        output->capacity = instance->record_count;
+        *result = output;
+    }
+
+    return FOSSIL_DB_CRABDB_SUCCESS;
 }
 
 /* ============================================================
@@ -1064,67 +1159,6 @@ fossil_db_crabdb_rollback(
     db->transaction_active = false;
 
     return FOSSIL_DB_CRABDB_SUCCESS;
-}
-
-/* ============================================================
- * Query
- * ============================================================ */
-
-fossil_db_crabdb_status_t
-fossil_db_crabdb_query(
-    fossil_db_crabdb_t *db,
-    const char *query,
-    fossil_db_crabdb_result_t **result)
-{
-    if (!crabdb_valid_db(db) ||
-        query == NULL ||
-        result == NULL)
-    {
-        return FOSSIL_DB_CRABDB_INVALID_ARGUMENT;
-    }
-
-    *result = NULL;
-
-    if (query[0] == '\0')
-    {
-        crabdb_set_error(
-            db,
-            "Query is empty.");
-
-        return FOSSIL_DB_CRABDB_QUERY_ERROR;
-    }
-
-    crabdb_set_error(
-        db,
-        "CrabQL query engine is not yet implemented.");
-
-    return FOSSIL_DB_CRABDB_QUERY_ERROR;
-}
-
-fossil_db_crabdb_status_t
-fossil_db_crabdb_execute(
-    fossil_db_crabdb_t *db,
-    const char *query)
-{
-    if (!crabdb_valid_db(db) || query == NULL)
-    {
-        return FOSSIL_DB_CRABDB_INVALID_ARGUMENT;
-    }
-
-    if (query[0] == '\0')
-    {
-        crabdb_set_error(
-            db,
-            "Query is empty.");
-
-        return FOSSIL_DB_CRABDB_QUERY_ERROR;
-    }
-
-    crabdb_set_error(
-        db,
-        "CrabQL query engine is not yet implemented.");
-
-    return FOSSIL_DB_CRABDB_QUERY_ERROR;
 }
 
 /* ============================================================
