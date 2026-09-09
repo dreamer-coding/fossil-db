@@ -22,7 +22,7 @@
  * Copyright (C) 2013-Current Fossil Logic. All rights reserved.
  * -----------------------------------------------------------------------------
  */
-#include "fossil/crabdb/crabdb.h"
+#include "fossil/db/crabdb.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
