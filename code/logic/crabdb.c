@@ -38,41 +38,129 @@
  * Internal Structures
  * ============================================================ */
 
+/* ============================================================
+ * Internal Table
+ * ============================================================ */
+
 struct fossil_db_crabdb_table_s
 {
     char *name;
+
+    fossil_db_crabdb_field_t **fields;
+    size_t field_count;
+    size_t field_capacity;
+
+    fossil_db_crabdb_record_t **records;
+    size_t record_count;
+    size_t record_capacity;
+
+    uint64_t next_record_id;
 };
+
+
+/* ============================================================
+ * Internal Record
+ * ============================================================ */
 
 struct fossil_db_crabdb_record_s
 {
-    void *data;
+    uint64_t id;
+
+    char **names;
+    fossil_db_crabdb_value_t **values;
+    size_t value_count;
+    size_t value_capacity;
+
+    fossil_db_crabdb_table_t *table;
 };
+
+
+/* ============================================================
+ * Internal Field
+ * ============================================================ */
 
 struct fossil_db_crabdb_field_s
 {
     char *name;
+
+    fossil_db_crabdb_type_t type;
+
+    size_t offset;
+    size_t size;
+
+    bool nullable;
+    bool primary_key;
+    bool unique;
 };
+
+
+/* ============================================================
+ * Internal Value
+ * ============================================================ */
 
 struct fossil_db_crabdb_value_s
 {
     fossil_db_crabdb_type_t type;
+
     void *data;
+    size_t size;
+    size_t capacity;
+
+    bool owned;
 };
+
+
+/* ============================================================
+ * Internal Query
+ * ============================================================ */
 
 struct fossil_db_crabdb_query_s
 {
     char *query;
+
+    size_t length;
+    size_t position;
+
+    size_t error_line;
+    size_t error_column;
+
+    fossil_db_crabdb_status_t status;
 };
+
+
+/* ============================================================
+ * Internal Result
+ * ============================================================ */
 
 struct fossil_db_crabdb_result_s
 {
+    fossil_db_crabdb_record_t **records;
+
     size_t count;
+    size_t capacity;
+
+    size_t position;
 };
+
+
+/* ============================================================
+ * Internal Transaction
+ * ============================================================ */
 
 struct fossil_db_crabdb_transaction_s
 {
     bool active;
+
+    size_t depth;
+
+    fossil_db_crabdb_table_t **tables;
+    size_t table_count;
 };
+
+
+/* ============================================================
+ * Internal Database
+ * ============================================================ */
 
 struct fossil_db_crabdb_s
 {
@@ -80,11 +168,19 @@ struct fossil_db_crabdb_s
 
     bool memory;
     bool closed;
+    bool read_only;
     bool transaction_active;
 
     fossil_db_crabdb_table_t **tables;
     size_t table_count;
     size_t table_capacity;
+    size_t transaction_table_count;
+
+    fossil_db_crabdb_transaction_t *transaction;
+
+    size_t affected_rows;
+
+    fossil_db_crabdb_status_t status;
 
     char error[FOSSIL_DB_CRABDB_MAX_ERROR_LENGTH];
 };
@@ -165,14 +261,14 @@ crabdb_find_table(
 {
     size_t i;
 
-    if (db == NULL || name == NULL)
+    if (db == NULL || name == NULL || db->tables == NULL)
     {
         return NULL;
     }
 
     for (i = 0; i < db->table_count; ++i)
     {
-        if (db->tables[i] == NULL)
+        if (db->tables[i] == NULL || db->tables[i]->name == NULL)
         {
             continue;
         }
@@ -248,6 +344,7 @@ crabdb_allocate(
     instance->memory = memory;
     instance->closed = false;
     instance->transaction_active = false;
+    instance->transaction_table_count = 0;
 
     if (path != NULL)
     {
@@ -280,6 +377,48 @@ crabdb_allocate(
     *db = instance;
 
     return FOSSIL_DB_CRABDB_SUCCESS;
+}
+
+static void
+crabdb_free_record(fossil_db_crabdb_record_t *record)
+{
+    size_t i;
+
+    if (record == NULL)
+    {
+        return;
+    }
+
+    for (i = 0; i < record->value_count; ++i)
+    {
+        free(record->names[i]);
+        fossil_db_crabdb_value_destroy(record->values[i]);
+    }
+
+    free(record->names);
+    free(record->values);
+    free(record);
+}
+
+static void
+crabdb_free_table(fossil_db_crabdb_table_t *table)
+{
+    size_t i;
+
+    if (table == NULL)
+    {
+        return;
+    }
+
+    for (i = 0; i < table->record_count; ++i)
+    {
+        crabdb_free_record(table->records[i]);
+    }
+
+    free(table->records);
+    free(table->fields);
+    free(table->name);
+    free(table);
 }
 
 /* ============================================================
@@ -440,8 +579,7 @@ fossil_db_crabdb_close(
             continue;
         }
 
-        free(db->tables[i]->name);
-        free(db->tables[i]);
+        crabdb_free_table(db->tables[i]);
     }
 
     free(db->tables);
@@ -585,8 +723,7 @@ fossil_db_crabdb_drop_table(
             continue;
         }
 
-        free(table->name);
-        free(table);
+        crabdb_free_table(table);
 
         for (; i + 1 < db->table_count; ++i)
         {
@@ -868,6 +1005,7 @@ fossil_db_crabdb_begin(
     }
 
     db->transaction_active = true;
+    db->transaction_table_count = db->table_count;
 
     return FOSSIL_DB_CRABDB_SUCCESS;
 }
@@ -899,6 +1037,8 @@ fossil_db_crabdb_status_t
 fossil_db_crabdb_rollback(
     fossil_db_crabdb_t *db)
 {
+    size_t i;
+
     if (!crabdb_valid_db(db))
     {
         return FOSSIL_DB_CRABDB_INVALID_ARGUMENT;
@@ -913,6 +1053,14 @@ fossil_db_crabdb_rollback(
         return FOSSIL_DB_CRABDB_TRANSACTION_ERROR;
     }
 
+    /* Discard tables created after the transaction began. */
+    for (i = db->transaction_table_count; i < db->table_count; ++i)
+    {
+        crabdb_free_table(db->tables[i]);
+        db->tables[i] = NULL;
+    }
+
+    db->table_count = db->transaction_table_count;
     db->transaction_active = false;
 
     return FOSSIL_DB_CRABDB_SUCCESS;

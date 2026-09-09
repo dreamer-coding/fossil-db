@@ -54,6 +54,7 @@ FOSSIL_TEST(c_test_crabdb_version_info) {
 
     ASSUME_ITS_TRUE(fossil_db_crabdb_status_string(FOSSIL_DB_CRABDB_SUCCESS) != NULL);
     ASSUME_ITS_TRUE(fossil_db_crabdb_status_string(FOSSIL_DB_CRABDB_NOT_FOUND) != NULL);
+    ASSUME_ITS_TRUE(fossil_db_crabdb_status_string(FOSSIL_DB_CRABDB_QUERY_ERROR) != NULL);
 }
 
 FOSSIL_TEST(c_test_crabdb_create_open_close) {
@@ -96,6 +97,12 @@ FOSSIL_TEST(c_test_crabdb_table_and_value) {
     ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
     ASSUME_ITS_TRUE(value != NULL);
     ASSUME_ITS_TRUE(fossil_db_crabdb_value_type(value) == FOSSIL_DB_CRABDB_TYPE_CSTR);
+
+    fossil_db_crabdb_value_destroy(value);
+    value = NULL;
+    status = fossil_db_crabdb_value_create(&value, FOSSIL_DB_CRABDB_TYPE_I64);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(fossil_db_crabdb_value_type(value) == FOSSIL_DB_CRABDB_TYPE_I64);
 
     fossil_db_crabdb_value_destroy(value);
     status = fossil_db_crabdb_close(db);

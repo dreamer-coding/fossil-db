@@ -26,6 +26,5 @@
 #define FOSSIL_CRABDB_FRAMEWORK_H
 
 #include "crabdb.h"
-#include "crabql.h"
 
 #endif /* FOSSIL_CRABDB_FRAMEWORK_H */
