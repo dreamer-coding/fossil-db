@@ -34,7 +34,7 @@ Add the `fossil-db.wrap` file in your `subprojects` directory and include the fo
 ```ini
 [wrap-git]
 url = https://github.com/fossillogic/fossil-db.git
-revision = v1.0.1
+revision = v1.0.2
 
 [provide]
 dependency_names = fossil-db
