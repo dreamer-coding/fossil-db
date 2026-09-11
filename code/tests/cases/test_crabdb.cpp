@@ -35,11 +35,13 @@
 
 FOSSIL_SUITE(cpp_crabdb_fixture);
 
-FOSSIL_SETUP(cpp_crabdb_fixture) {
+FOSSIL_SETUP(cpp_crabdb_fixture)
+{
     // Setup the test fixture
 }
 
-FOSSIL_TEARDOWN(cpp_crabdb_fixture) {
+FOSSIL_TEARDOWN(cpp_crabdb_fixture)
+{
     // Teardown the test fixture
 }
 
@@ -47,7 +49,8 @@ FOSSIL_TEARDOWN(cpp_crabdb_fixture) {
 // * Fossil Logic Test Blue CrabDB Database
 // * * * * * * * * * * * * * * * * * * * * * * * *
 
-FOSSIL_TEST(cpp_test_crabdb_version_info) {
+FOSSIL_TEST(cpp_test_crabdb_version_info)
+{
     ASSUME_ITS_TRUE(fossil::database::CrabDB::version() != NULL);
     ASSUME_ITS_EQUAL_CSTR(fossil::database::CrabDB::version(), "0.1.0");
     ASSUME_ITS_TRUE(fossil::database::CrabDB::status_string(FOSSIL_DB_CRABDB_SUCCESS) != NULL);
@@ -61,7 +64,8 @@ FOSSIL_TEST(cpp_test_crabdb_version_info) {
     ASSUME_ITS_TRUE(db.handle() == NULL);
 }
 
-FOSSIL_TEST(cpp_test_crabdb_create_open_close) {
+FOSSIL_TEST(cpp_test_crabdb_create_open_close)
+{
     const std::string file_name = "test_crabdb_cpp_basic.db";
     fossil::database::CrabDB db;
 
@@ -80,7 +84,8 @@ FOSSIL_TEST(cpp_test_crabdb_create_open_close) {
     remove(file_name.c_str());
 }
 
-FOSSIL_TEST(cpp_test_crabdb_table_and_value) {
+FOSSIL_TEST(cpp_test_crabdb_table_and_value)
+{
     const std::string file_name = "test_crabdb_cpp_table.db";
     fossil_db_crabdb_value_t *value = NULL;
     fossil::database::CrabDB db;
@@ -99,7 +104,8 @@ FOSSIL_TEST(cpp_test_crabdb_table_and_value) {
     remove(file_name.c_str());
 }
 
-FOSSIL_TEST(cpp_test_crabdb_cpp_transaction_roundtrip) {
+FOSSIL_TEST(cpp_test_crabdb_cpp_transaction_roundtrip)
+{
     const std::string file_name = "test_crabdb_cpp_tx.db";
     fossil::database::CrabDB db;
 
@@ -112,7 +118,8 @@ FOSSIL_TEST(cpp_test_crabdb_cpp_transaction_roundtrip) {
     remove(file_name.c_str());
 }
 
-FOSSIL_TEST(cpp_test_crabdb_default_constructor_and_invalid_state) {
+FOSSIL_TEST(cpp_test_crabdb_default_constructor_and_invalid_state)
+{
     fossil::database::CrabDB db;
 
     ASSUME_ITS_TRUE(db.handle() == NULL);
@@ -124,7 +131,8 @@ FOSSIL_TEST(cpp_test_crabdb_default_constructor_and_invalid_state) {
     ASSUME_ITS_TRUE(db.table_exists("missing") == false);
 }
 
-FOSSIL_TEST(cpp_test_crabdb_rename_and_drop_table) {
+FOSSIL_TEST(cpp_test_crabdb_rename_and_drop_table)
+{
     const std::string file_name = "test_crabdb_cpp_rename.db";
     fossil::database::CrabDB db;
 
@@ -143,7 +151,8 @@ FOSSIL_TEST(cpp_test_crabdb_rename_and_drop_table) {
     remove(file_name.c_str());
 }
 
-FOSSIL_TEST(cpp_test_crabdb_transaction_rollback) {
+FOSSIL_TEST(cpp_test_crabdb_transaction_rollback)
+{
     const std::string file_name = "test_crabdb_cpp_tx_rollback.db";
     fossil::database::CrabDB db;
 
@@ -157,10 +166,55 @@ FOSSIL_TEST(cpp_test_crabdb_transaction_rollback) {
     remove(file_name.c_str());
 }
 
+FOSSIL_TEST(cpp_test_crabdb_path_constructors_and_destroy)
+{
+    const std::string file_name = "test_crabdb_cpp_constructor.db";
+
+    {
+        fossil::database::CrabDB db(file_name.c_str());
+        ASSUME_ITS_TRUE(db.handle() != NULL);
+        db.destroy();
+        ASSUME_ITS_TRUE(db.handle() == NULL);
+        db.destroy();
+        ASSUME_ITS_TRUE(db.handle() == NULL);
+    }
+
+    {
+        fossil::database::CrabDB db(file_name);
+        ASSUME_ITS_TRUE(db.handle() != NULL);
+        ASSUME_ITS_TRUE(db.close() == FOSSIL_DB_CRABDB_SUCCESS);
+        ASSUME_ITS_TRUE(db.handle() == NULL);
+    }
+
+    remove(file_name.c_str());
+}
+
+FOSSIL_TEST(cpp_test_crabdb_last_error_and_string_overloads)
+{
+    const std::string file_name = "test_crabdb_cpp_string_overloads.db";
+    const char *message = NULL;
+    fossil::database::CrabDB db;
+
+    ASSUME_ITS_TRUE(db.last_error(&message) == FOSSIL_DB_CRABDB_INVALID_STATE);
+    ASSUME_ITS_TRUE(db.create(file_name) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.create_table(std::string("items")) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.table_exists(std::string("items")) == true);
+    ASSUME_ITS_TRUE(db.rename_table(std::string("items"), std::string("products")) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.table_exists(std::string("products")) == true);
+    ASSUME_ITS_TRUE(db.drop_table(std::string("products")) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.table_exists(std::string("products")) == false);
+    ASSUME_ITS_TRUE(db.last_error(&message) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(message != NULL);
+    ASSUME_ITS_TRUE(db.close() == FOSSIL_DB_CRABDB_SUCCESS);
+
+    remove(file_name.c_str());
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
-FOSSIL_TEST_GROUP(cpp_crabdb_database_tests) {
+FOSSIL_TEST_GROUP(cpp_crabdb_database_tests)
+{
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_version_info);
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_create_open_close);
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_table_and_value);
@@ -168,6 +222,8 @@ FOSSIL_TEST_GROUP(cpp_crabdb_database_tests) {
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_default_constructor_and_invalid_state);
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_rename_and_drop_table);
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_transaction_rollback);
+    FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_path_constructors_and_destroy);
+    FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_last_error_and_string_overloads);
 
     FOSSIL_ADD_SUITE(cpp_crabdb_fixture);
 } // end of tests

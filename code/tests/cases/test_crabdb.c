@@ -35,11 +35,13 @@
 
 FOSSIL_SUITE(c_crabdb_fixture);
 
-FOSSIL_SETUP(c_crabdb_fixture) {
+FOSSIL_SETUP(c_crabdb_fixture)
+{
     // Setup the test fixture
 }
 
-FOSSIL_TEARDOWN(c_crabdb_fixture) {
+FOSSIL_TEARDOWN(c_crabdb_fixture)
+{
     // Teardown the test fixture
 }
 
@@ -47,7 +49,8 @@ FOSSIL_TEARDOWN(c_crabdb_fixture) {
 // * Fossil Logic Test Blue CrabDB Database
 // * * * * * * * * * * * * * * * * * * * * * * * *
 
-FOSSIL_TEST(c_test_crabdb_version_info) {
+FOSSIL_TEST(c_test_crabdb_version_info)
+{
     const char *version = fossil_db_crabdb_version();
     ASSUME_ITS_TRUE(version != NULL);
     ASSUME_ITS_EQUAL_CSTR(version, "0.1.0");
@@ -57,7 +60,8 @@ FOSSIL_TEST(c_test_crabdb_version_info) {
     ASSUME_ITS_TRUE(fossil_db_crabdb_status_string(FOSSIL_DB_CRABDB_QUERY_ERROR) != NULL);
 }
 
-FOSSIL_TEST(c_test_crabdb_create_open_close) {
+FOSSIL_TEST(c_test_crabdb_create_open_close)
+{
     fossil_db_crabdb_status_t status;
     fossil_db_crabdb_t *db = NULL;
     const char *file_name = "test_crabdb_basic.db";
@@ -79,7 +83,8 @@ FOSSIL_TEST(c_test_crabdb_create_open_close) {
     remove(file_name);
 }
 
-FOSSIL_TEST(c_test_crabdb_table_and_value) {
+FOSSIL_TEST(c_test_crabdb_table_and_value)
+{
     fossil_db_crabdb_status_t status;
     fossil_db_crabdb_t *db = NULL;
     fossil_db_crabdb_value_t *value = NULL;
@@ -111,7 +116,8 @@ FOSSIL_TEST(c_test_crabdb_table_and_value) {
     remove(file_name);
 }
 
-FOSSIL_TEST(c_test_crabdb_transaction_roundtrip) {
+FOSSIL_TEST(c_test_crabdb_transaction_roundtrip)
+{
     fossil_db_crabdb_status_t status;
     fossil_db_crabdb_t *db = NULL;
     const char *file_name = "test_crabdb_tx.db";
@@ -135,14 +141,16 @@ FOSSIL_TEST(c_test_crabdb_transaction_roundtrip) {
     remove(file_name);
 }
 
-FOSSIL_TEST(c_test_crabdb_version_info_extended) {
+FOSSIL_TEST(c_test_crabdb_version_info_extended)
+{
     ASSUME_ITS_TRUE(FOSSIL_DB_CRABDB_VERSION_MAJOR == 0);
     ASSUME_ITS_TRUE(FOSSIL_DB_CRABDB_VERSION_MINOR == 1);
     ASSUME_ITS_TRUE(FOSSIL_DB_CRABDB_VERSION_PATCH == 0);
     ASSUME_ITS_EQUAL_CSTR(FOSSIL_DB_CRABDB_VERSION, "0.1.0");
 }
 
-FOSSIL_TEST(c_test_crabdb_open_memory_and_destroy) {
+FOSSIL_TEST(c_test_crabdb_open_memory_and_destroy)
+{
     fossil_db_crabdb_status_t status;
     fossil_db_crabdb_t *db = NULL;
 
@@ -156,7 +164,8 @@ FOSSIL_TEST(c_test_crabdb_open_memory_and_destroy) {
     fossil_db_crabdb_destroy(db);
 }
 
-FOSSIL_TEST(c_test_crabdb_table_rename_drop) {
+FOSSIL_TEST(c_test_crabdb_table_rename_drop)
+{
     fossil_db_crabdb_status_t status;
     fossil_db_crabdb_t *db = NULL;
     const char *file_name = "test_crabdb_table_ops.db";
@@ -183,7 +192,8 @@ FOSSIL_TEST(c_test_crabdb_table_rename_drop) {
     remove(file_name);
 }
 
-FOSSIL_TEST(c_test_crabdb_rollback) {
+FOSSIL_TEST(c_test_crabdb_rollback)
+{
     fossil_db_crabdb_status_t status;
     fossil_db_crabdb_t *db = NULL;
     const char *file_name = "test_crabdb_rollback.db";
@@ -209,22 +219,26 @@ FOSSIL_TEST(c_test_crabdb_rollback) {
     remove(file_name);
 }
 
-FOSSIL_TEST(c_test_crabdb_status_strings) {
+FOSSIL_TEST(c_test_crabdb_status_strings)
+{
     fossil_db_crabdb_status_t status;
 
     for (status = FOSSIL_DB_CRABDB_SUCCESS;
          status <= FOSSIL_DB_CRABDB_QUERY_ERROR;
-         status++) {
+         status++)
+    {
         ASSUME_ITS_TRUE(fossil_db_crabdb_status_string(status) != NULL);
     }
 }
 
-FOSSIL_TEST(c_test_crabdb_value_types) {
+FOSSIL_TEST(c_test_crabdb_value_types)
+{
     fossil_db_crabdb_type_t type;
 
     for (type = FOSSIL_DB_CRABDB_TYPE_NULL;
          type <= FOSSIL_DB_CRABDB_TYPE_ANY;
-         type++) {
+         type++)
+    {
         fossil_db_crabdb_value_t *value = NULL;
         fossil_db_crabdb_status_t status =
             fossil_db_crabdb_value_create(&value, type);
@@ -236,7 +250,8 @@ FOSSIL_TEST(c_test_crabdb_value_types) {
     }
 }
 
-FOSSIL_TEST(c_test_crabdb_transaction_state_errors) {
+FOSSIL_TEST(c_test_crabdb_transaction_state_errors)
+{
     fossil_db_crabdb_status_t status;
     fossil_db_crabdb_t *db = NULL;
 
@@ -253,10 +268,71 @@ FOSSIL_TEST(c_test_crabdb_transaction_state_errors) {
     fossil_db_crabdb_destroy(db);
 }
 
+FOSSIL_TEST(c_test_crabdb_last_error)
+{
+    fossil_db_crabdb_status_t status;
+    fossil_db_crabdb_t *db = NULL;
+    const char *message = NULL;
+
+    status = fossil_db_crabdb_open_memory(&db);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db != NULL);
+
+    status = fossil_db_crabdb_last_error(db, &message);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS ||
+                    status != FOSSIL_DB_CRABDB_SUCCESS);
+
+    status = fossil_db_crabdb_close(db);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    fossil_db_crabdb_destroy(db);
+}
+
+FOSSIL_TEST(c_test_crabdb_select_empty_table)
+{
+    fossil_db_crabdb_status_t status;
+    fossil_db_crabdb_t *db = NULL;
+    fossil_db_crabdb_result_t *result = NULL;
+
+    status = fossil_db_crabdb_open_memory(&db);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+
+    status = fossil_db_crabdb_create_table(db, "events");
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    status = fossil_db_crabdb_select(db, "events", &result);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(result != NULL);
+    ASSUME_ITS_TRUE(fossil_db_crabdb_result_count(result) == 0);
+
+    fossil_db_crabdb_result_destroy(result);
+    status = fossil_db_crabdb_close(db);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    fossil_db_crabdb_destroy(db);
+}
+
+FOSSIL_TEST(c_test_crabdb_table_edge_cases)
+{
+    fossil_db_crabdb_status_t status;
+    fossil_db_crabdb_t *db = NULL;
+
+    status = fossil_db_crabdb_open_memory(&db);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(fossil_db_crabdb_table_exists(db, "missing") == false);
+
+    status = fossil_db_crabdb_create_table(db, "items");
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    status = fossil_db_crabdb_create_table(db, "items");
+    ASSUME_ITS_TRUE(status != FOSSIL_DB_CRABDB_SUCCESS);
+
+    status = fossil_db_crabdb_close(db);
+    ASSUME_ITS_TRUE(status == FOSSIL_DB_CRABDB_SUCCESS);
+    fossil_db_crabdb_destroy(db);
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
-FOSSIL_TEST_GROUP(c_crabdb_database_tests) {
+FOSSIL_TEST_GROUP(c_crabdb_database_tests)
+{
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_version_info);
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_create_open_close);
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_table_and_value);
@@ -268,6 +344,9 @@ FOSSIL_TEST_GROUP(c_crabdb_database_tests) {
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_status_strings);
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_value_types);
     FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_transaction_state_errors);
+    FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_last_error);
+    FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_select_empty_table);
+    FOSSIL_ADD_TEST(c_crabdb_fixture, c_test_crabdb_table_edge_cases);
 
     FOSSIL_ADD_SUITE(c_crabdb_fixture);
 } // end of tests
