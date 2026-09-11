@@ -57,7 +57,6 @@ struct fossil_db_crabdb_table_s
     uint64_t next_record_id;
 };
 
-
 /* ============================================================
  * Internal Record
  * ============================================================ */
@@ -73,7 +72,6 @@ struct fossil_db_crabdb_record_s
 
     fossil_db_crabdb_table_t *table;
 };
-
 
 /* ============================================================
  * Internal Field
@@ -93,7 +91,6 @@ struct fossil_db_crabdb_field_s
     bool unique;
 };
 
-
 /* ============================================================
  * Internal Value
  * ============================================================ */
@@ -108,7 +105,6 @@ struct fossil_db_crabdb_value_s
 
     bool owned;
 };
-
 
 /* ============================================================
  * Internal Query
@@ -127,7 +123,6 @@ struct fossil_db_crabdb_query_s
     fossil_db_crabdb_status_t status;
 };
 
-
 /* ============================================================
  * Internal Result
  * ============================================================ */
@@ -142,7 +137,6 @@ struct fossil_db_crabdb_result_s
     size_t position;
 };
 
-
 /* ============================================================
  * Internal Transaction
  * ============================================================ */
@@ -156,7 +150,6 @@ struct fossil_db_crabdb_transaction_s
     fossil_db_crabdb_table_t **tables;
     size_t table_count;
 };
-
 
 /* ============================================================
  * Internal Database
@@ -421,6 +414,191 @@ crabdb_free_table(fossil_db_crabdb_table_t *table)
     free(table);
 }
 
+static bool
+crabdb_read(FILE *file, void *data, size_t size)
+{
+    return size == 0 || fread(data, 1, size, file) == size;
+}
+
+static char *
+crabdb_read_string(FILE *file)
+{
+    size_t length;
+    char *string;
+
+    if (!crabdb_read(file, &length, sizeof(length)) ||
+        length == 0 || length > (1024 * 1024))
+        return NULL;
+
+    string = malloc(length);
+    if (string == NULL || !crabdb_read(file, string, length) ||
+        string[length - 1] != '\0')
+    {
+        free(string);
+        return NULL;
+    }
+    return string;
+}
+
+static bool
+crabdb_load(fossil_db_crabdb_t *db)
+{
+    FILE *file;
+    uint32_t magic;
+    size_t table_count, i, j, k;
+
+    if (db->memory || db->path == NULL)
+        return true;
+    file = fopen(db->path, "rb");
+    if (file == NULL || !crabdb_read(file, &magic, sizeof(magic)) ||
+        magic != 0x31424443 || !crabdb_read(file, &table_count, sizeof(table_count)) ||
+        table_count > 100000)
+    {
+        if (file != NULL)
+            fclose(file);
+        return false;
+    }
+
+    for (i = 0; i < table_count; ++i)
+    {
+        char *name = crabdb_read_string(file);
+        size_t field_count, record_count;
+        fossil_db_crabdb_table_t *table;
+        if (name == NULL || !crabdb_read(file, &field_count, sizeof(field_count)) ||
+            field_count > 100000 ||
+            fossil_db_crabdb_create_table(db, name) != FOSSIL_DB_CRABDB_SUCCESS)
+        {
+            free(name);
+            fclose(file);
+            return false;
+        }
+        free(name);
+        table = db->tables[db->table_count - 1];
+        for (j = 0; j < field_count; ++j)
+        {
+            fossil_db_crabdb_type_t type;
+            size_t offset, size;
+            bool nullable, primary_key, unique;
+            fossil_db_crabdb_field_t *field;
+            char *field_name = crabdb_read_string(file);
+            if (field_name == NULL || !crabdb_read(file, &type, sizeof(type)) ||
+                !crabdb_read(file, &offset, sizeof(offset)) ||
+                !crabdb_read(file, &size, sizeof(size)) ||
+                !crabdb_read(file, &nullable, sizeof(nullable)) ||
+                !crabdb_read(file, &primary_key, sizeof(primary_key)) ||
+                !crabdb_read(file, &unique, sizeof(unique)))
+            {
+                free(field_name);
+                fclose(file);
+                return false;
+            }
+
+            field = calloc(1, sizeof(*field));
+            if (field == NULL)
+            {
+                free(field_name);
+                fclose(file);
+                return false;
+            }
+            field->name = field_name;
+            field->type = type;
+            field->offset = offset;
+            field->size = size;
+            field->nullable = nullable;
+            field->primary_key = primary_key;
+            field->unique = unique;
+
+            if (table->field_count >= table->field_capacity)
+            {
+                size_t capacity = table->field_capacity == 0
+                                      ? FOSSIL_DB_CRABDB_INITIAL_TABLE_CAPACITY
+                                      : table->field_capacity * 2;
+                fossil_db_crabdb_field_t **fields = realloc(
+                    table->fields, sizeof(*fields) * capacity);
+                if (fields == NULL)
+                {
+                    free(field->name);
+                    free(field);
+                    fclose(file);
+                    return false;
+                }
+                table->fields = fields;
+                table->field_capacity = capacity;
+            }
+            table->fields[table->field_count++] = field;
+        }
+        if (!crabdb_read(file, &record_count, sizeof(record_count)) || record_count > 1000000)
+        {
+            fclose(file);
+            return false;
+        }
+        for (j = 0; j < record_count; ++j)
+        {
+            fossil_db_crabdb_record_t *record = calloc(1, sizeof(*record));
+            if (record == NULL || !crabdb_read(file, &record->id, sizeof(record->id)) ||
+                !crabdb_read(file, &record->value_count, sizeof(record->value_count)) ||
+                record->value_count > 100000)
+            {
+                crabdb_free_record(record);
+                fclose(file);
+                return false;
+            }
+            record->table = table;
+            record->value_capacity = record->value_count;
+            if (record->value_count != 0)
+            {
+                record->names = calloc(record->value_count, sizeof(*record->names));
+                record->values = calloc(record->value_count, sizeof(*record->values));
+                if (record->names == NULL || record->values == NULL)
+                {
+                    crabdb_free_record(record);
+                    fclose(file);
+                    return false;
+                }
+            }
+            for (k = 0; k < record->value_count; ++k)
+            {
+                size_t size;
+                record->names[k] = crabdb_read_string(file);
+                record->values[k] = calloc(1, sizeof(*record->values[k]));
+                if (record->names[k] == NULL || record->values[k] == NULL ||
+                    !crabdb_read(file, &record->values[k]->type, sizeof(record->values[k]->type)) ||
+                    !crabdb_read(file, &size, sizeof(size)) || size > 1024 * 1024)
+                {
+                    crabdb_free_record(record);
+                    fclose(file);
+                    return false;
+                }
+                record->values[k]->size = record->values[k]->capacity = size;
+                if (size != 0 && !(record->values[k]->data = malloc(size)))
+                {
+                    crabdb_free_record(record);
+                    fclose(file);
+                    return false;
+                }
+                if (!crabdb_read(file, record->values[k]->data, size))
+                {
+                    crabdb_free_record(record);
+                    fclose(file);
+                    return false;
+                }
+            }
+            if (record->id > table->next_record_id)
+                table->next_record_id = record->id;
+            table->records = realloc(table->records, sizeof(*table->records) * (table->record_count + 1));
+            if (table->records == NULL)
+            {
+                crabdb_free_record(record);
+                fclose(file);
+                return false;
+            }
+            table->records[table->record_count++] = record;
+        }
+    }
+    fclose(file);
+    return true;
+}
+
 /* Persist the in-memory graph in a pointer-free private format. */
 static bool
 crabdb_save(fossil_db_crabdb_t *db)
@@ -438,7 +616,10 @@ crabdb_save(fossil_db_crabdb_t *db)
 
     if (fwrite(&magic, sizeof(magic), 1, file) != 1 ||
         fwrite(&db->table_count, sizeof(db->table_count), 1, file) != 1)
-        goto failure;
+    {
+        fclose(file);
+        return false;
+    }
 
     for (i = 0; i < db->table_count; ++i)
     {
@@ -448,7 +629,10 @@ crabdb_save(fossil_db_crabdb_t *db)
         if (fwrite(&length, sizeof(length), 1, file) != 1 ||
             fwrite(table->name, 1, length, file) != length ||
             fwrite(&table->field_count, sizeof(table->field_count), 1, file) != 1)
-            goto failure;
+        {
+            fclose(file);
+            return false;
+        }
 
         for (j = 0; j < table->field_count; ++j)
         {
@@ -462,17 +646,26 @@ crabdb_save(fossil_db_crabdb_t *db)
                 fwrite(&field->nullable, sizeof(field->nullable), 1, file) != 1 ||
                 fwrite(&field->primary_key, sizeof(field->primary_key), 1, file) != 1 ||
                 fwrite(&field->unique, sizeof(field->unique), 1, file) != 1)
-                goto failure;
+            {
+                fclose(file);
+                return false;
+            }
         }
 
         if (fwrite(&table->record_count, sizeof(table->record_count), 1, file) != 1)
-            goto failure;
+        {
+            fclose(file);
+            return false;
+        }
         for (j = 0; j < table->record_count; ++j)
         {
             fossil_db_crabdb_record_t *record = table->records[j];
             if (fwrite(&record->id, sizeof(record->id), 1, file) != 1 ||
                 fwrite(&record->value_count, sizeof(record->value_count), 1, file) != 1)
-                goto failure;
+            {
+                fclose(file);
+                return false;
+            }
             for (k = 0; k < record->value_count; ++k)
             {
                 fossil_db_crabdb_value_t *value = record->values[k];
@@ -482,16 +675,15 @@ crabdb_save(fossil_db_crabdb_t *db)
                     fwrite(&value->type, sizeof(value->type), 1, file) != 1 ||
                     fwrite(&value->size, sizeof(value->size), 1, file) != 1 ||
                     (value->size != 0 && fwrite(value->data, 1, value->size, file) != value->size))
-                    goto failure;
+                {
+                    fclose(file);
+                    return false;
+                }
             }
         }
     }
 
     return fclose(file) == 0;
-
-failure:
-    fclose(file);
-    return false;
 }
 
 /* ============================================================
@@ -613,10 +805,15 @@ fossil_db_crabdb_open(
 
     fclose(file);
 
-    return crabdb_allocate(
-        db,
-        path,
-        false);
+    if (crabdb_allocate(db, path, false) != FOSSIL_DB_CRABDB_SUCCESS)
+        return FOSSIL_DB_CRABDB_OUT_OF_MEMORY;
+    if (!crabdb_load(*db))
+    {
+        fossil_db_crabdb_destroy(*db);
+        *db = NULL;
+        return FOSSIL_DB_CRABDB_CORRUPTED;
+    }
+    return FOSSIL_DB_CRABDB_SUCCESS;
 }
 
 fossil_db_crabdb_status_t
