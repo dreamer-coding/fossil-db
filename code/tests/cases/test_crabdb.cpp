@@ -310,6 +310,84 @@ FOSSIL_TEST(cpp_test_crabdb_table_edge_cases)
     fossil_db_crabdb_destroy(db);
 }
 
+FOSSIL_TEST(cpp_test_crabdb_cpp_wrapper_lifecycle)
+{
+    using fossil::database::CrabDB;
+
+    CrabDB db;
+    ASSUME_ITS_TRUE(db.handle() == NULL);
+    ASSUME_ITS_TRUE(CrabDB::version() != NULL);
+    ASSUME_ITS_TRUE(CrabDB::status_string(FOSSIL_DB_CRABDB_SUCCESS) != NULL);
+    ASSUME_ITS_TRUE(db.create(std::string("test_crabdb_wrapper.db")) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.handle() != NULL);
+    ASSUME_ITS_TRUE(db.close() == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.handle() == NULL);
+    ASSUME_ITS_TRUE(db.close() == FOSSIL_DB_CRABDB_INVALID_STATE);
+    ASSUME_ITS_TRUE(db.open("test_crabdb_wrapper.db") == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.handle() != NULL);
+    db.destroy();
+    ASSUME_ITS_TRUE(db.handle() == NULL);
+    remove("test_crabdb_wrapper.db");
+}
+
+FOSSIL_TEST(cpp_test_crabdb_cpp_wrapper_operations)
+{
+    using fossil::database::CrabDB;
+
+    CrabDB db;
+    ASSUME_ITS_TRUE(db.create("test_crabdb_wrapper_ops.db") == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.create_table(std::string("users")) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.table_exists(std::string("users")));
+    ASSUME_ITS_TRUE(db.rename_table(std::string("users"), std::string("players")) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.table_exists("players"));
+
+    fossil_db_crabdb_result_t *result = NULL;
+    ASSUME_ITS_TRUE(db.select(std::string("players"), &result) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(result != NULL);
+    ASSUME_ITS_TRUE(fossil_db_crabdb_result_count(result) == 0);
+    fossil_db_crabdb_result_destroy(result);
+
+    ASSUME_ITS_TRUE(db.begin() == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.create_table("temporary") == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.rollback() == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(!db.table_exists("temporary"));
+    ASSUME_ITS_TRUE(db.drop_table(std::string("players")) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(!db.table_exists("players"));
+
+    const char *message = NULL;
+    ASSUME_ITS_TRUE(db.last_error(&message) == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.close() == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(db.create_table("inactive") == FOSSIL_DB_CRABDB_INVALID_STATE);
+    ASSUME_ITS_TRUE(!db.table_exists("players"));
+    remove("test_crabdb_wrapper_ops.db");
+}
+
+FOSSIL_TEST(cpp_test_crabdb_cpp_wrapper_constructors_and_invalid_state)
+{
+    using fossil::database::CrabDB;
+
+    CrabDB inactive;
+    ASSUME_ITS_TRUE(inactive.handle() == NULL);
+    ASSUME_ITS_TRUE(inactive.begin() == FOSSIL_DB_CRABDB_INVALID_STATE);
+    ASSUME_ITS_TRUE(inactive.commit() == FOSSIL_DB_CRABDB_INVALID_STATE);
+    ASSUME_ITS_TRUE(inactive.rollback() == FOSSIL_DB_CRABDB_INVALID_STATE);
+    ASSUME_ITS_TRUE(inactive.drop_table("none") == FOSSIL_DB_CRABDB_INVALID_STATE);
+    ASSUME_ITS_TRUE(inactive.rename_table("none", "other") == FOSSIL_DB_CRABDB_INVALID_STATE);
+    const char *message = NULL;
+    ASSUME_ITS_TRUE(inactive.last_error(&message) == FOSSIL_DB_CRABDB_INVALID_STATE);
+
+    {
+        CrabDB constructed(std::string("test_crabdb_wrapper_ctor.db"));
+        ASSUME_ITS_TRUE(constructed.handle() != NULL);
+        ASSUME_ITS_TRUE(constructed.create_table("constructed") == FOSSIL_DB_CRABDB_SUCCESS);
+    }
+    remove("test_crabdb_wrapper_ctor.db");
+
+    ASSUME_ITS_TRUE(inactive.open_memory() == FOSSIL_DB_CRABDB_SUCCESS);
+    ASSUME_ITS_TRUE(inactive.handle() != NULL);
+    inactive.destroy();
+}
+
 // * * * * * * * * * * * * * * * * * * * * * * * *
 // * Fossil Logic Test Pool
 // * * * * * * * * * * * * * * * * * * * * * * * *
@@ -328,6 +406,9 @@ FOSSIL_TEST_GROUP(cpp_crabdb_database_tests)
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_last_error);
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_select_empty_table);
     FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_table_edge_cases);
+    FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_cpp_wrapper_lifecycle);
+    FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_cpp_wrapper_operations);
+    FOSSIL_ADD_TEST(cpp_crabdb_fixture, cpp_test_crabdb_cpp_wrapper_constructors_and_invalid_state);
 
     FOSSIL_ADD_SUITE(cpp_crabdb_fixture);
 } // end of tests
