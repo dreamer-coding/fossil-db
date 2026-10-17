@@ -26,6 +26,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 /* ============================================================
  * Internal Constants
@@ -896,7 +900,14 @@ crabdb_save(fossil_db_crabdb_t *db)
         return false;
     }
 
+#if defined(_WIN32)
+    if (!MoveFileExA(
+            temporary_path,
+            db->path,
+            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+#else
     if (rename(temporary_path, db->path) != 0)
+#endif
     {
         remove(temporary_path);
         free(temporary_path);
